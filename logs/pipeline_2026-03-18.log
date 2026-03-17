@@ -1,0 +1,3 @@
+2026-03-18 01:41:44 | INFO     | __main__:22 — Tất cả imports và unit tests cơ bản OK.
+2026-03-18 01:42:13 | INFO     | __main__:14 — All imports OK — DB: localhost:5432/stockapp
+2026-03-18 01:42:13 | INFO     | __main__:15 — Phase 1 san sang!
