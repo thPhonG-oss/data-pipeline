@@ -35,7 +35,12 @@ class Settings(BaseSettings):
     cron_sync_financials: str = "0 3 1,15 * *"    # Ngày 1 & 15 hàng tháng 03:00
     cron_sync_company:    str = "0 2 * * 1"        # Thứ Hai 02:00
     cron_sync_ratios:     str = "30 18 * * *"      # Hàng ngày 18:30
+    cron_sync_prices:     str = "0 19 * * 1-5"     # Thứ 2–6 lúc 19:00 (sau đóng cửa)
     cron_alert_check:     str = "0 * * * *"        # Hàng giờ :00
+
+    # ── DNSE ──────────────────────────────────────────────────
+    dnse_username: str = ""   # Email hoặc SĐT đăng ký tài khoản DNSE
+    dnse_password: str = ""   # Mật khẩu đăng nhập DNSE
 
     # ── Alert ─────────────────────────────────────────────────
     telegram_bot_token: str = ""

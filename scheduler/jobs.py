@@ -28,6 +28,7 @@ def build_scheduler() -> BlockingScheduler:
     | sync_financials  | Ngày 1 và 15 hàng tháng 03:00 |
     | sync_company     | Thứ Hai 02:00                 |
     | sync_ratios      | Hàng ngày 18:30               |
+    | sync_prices      | Thứ 2–6 lúc 19:00             |
     | alert_check      | Hàng giờ :00                  |
     """
     # Import lazy để tránh circular import và chỉ load khi scheduler thực sự chạy
@@ -35,6 +36,7 @@ def build_scheduler() -> BlockingScheduler:
     import jobs.sync_financials as financials_job
     import jobs.sync_company    as company_job
     import jobs.sync_ratios     as ratios_job
+    import jobs.sync_prices     as prices_job
     from utils.alert_checker import check_and_alert
 
     scheduler = BlockingScheduler(timezone="Asia/Ho_Chi_Minh")
@@ -69,6 +71,14 @@ def build_scheduler() -> BlockingScheduler:
         id="sync_ratios",
         name="Đồng bộ ratio_summary (sau đóng cửa)",
         misfire_grace_time=1800,   # Bỏ qua nếu trễ hơn 30 phút
+    )
+
+    scheduler.add_job(
+        _safe_run(prices_job.run, "sync_prices"),
+        CronTrigger.from_crontab(settings.cron_sync_prices, timezone="Asia/Ho_Chi_Minh"),
+        id="sync_prices",
+        name="Đồng bộ giá lịch sử OHLCV (DNSE + VNDirect fallback)",
+        misfire_grace_time=3600,
     )
 
     scheduler.add_job(

@@ -27,6 +27,7 @@ JOB_SYNC_FINANCIALS = "sync_financials"
 JOB_SYNC_COMPANY    = "sync_company"
 JOB_SYNC_RATIOS     = "sync_ratios"
 JOB_BACKFILL        = "backfill"
+JOB_SYNC_PRICES     = "sync_prices"
 
 ALL_JOBS = [
     JOB_SYNC_LISTING,
@@ -34,6 +35,7 @@ ALL_JOBS = [
     JOB_SYNC_COMPANY,
     JOB_SYNC_RATIOS,
     JOB_BACKFILL,
+    JOB_SYNC_PRICES,
 ]
 
 # ── Cột conflict key cho từng bảng (dùng cho ON CONFLICT) ─────────────────────
@@ -49,6 +51,7 @@ CONFLICT_KEYS: dict[str, list[str]] = {
     "officers":          ["symbol", "officer_name", "status", "snapshot_date"],
     "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
     "corporate_events":  ["symbol", "event_list_code", "record_date"],
+    "price_history":     ["symbol", "date", "source"],
 }
 
 # ── Cột do server tự sinh, không được ghi vào INSERT/UPDATE ───────────────────

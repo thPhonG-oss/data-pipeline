@@ -16,6 +16,8 @@ Ví dụ:
   python main.py sync_financials --symbol HPG VCB FPT
   python main.py sync_company --symbol HPG --workers 3
   python main.py sync_ratios
+  python main.py sync_prices --symbol HPG VCB FPT
+  python main.py sync_prices --full-history
   python main.py schedule
         """,
     )
@@ -58,6 +60,24 @@ Ví dụ:
     p_rat.add_argument("--symbol", nargs="+", metavar="SYM")
     p_rat.add_argument("--workers", type=int, metavar="N")
 
+    # ── sync_prices ───────────────────────────────────────────────────────────
+    p_prices = subparsers.add_parser(
+        "sync_prices",
+        help="Đồng bộ giá lịch sử OHLCV (DNSE primary + VNDirect fallback)",
+    )
+    p_prices.add_argument(
+        "--symbol", nargs="+", metavar="SYM",
+        help="Mã cần sync (ví dụ: HPG VCB FPT). Mặc định: tất cả mã đang niêm yết.",
+    )
+    p_prices.add_argument(
+        "--workers", type=int, metavar="N",
+        help="Số luồng song song. Mặc định: settings.max_workers.",
+    )
+    p_prices.add_argument(
+        "--full-history", action="store_true",
+        help="Fetch lại 5 năm lịch sử (bỏ qua incremental sync).",
+    )
+
     # ── schedule ──────────────────────────────────────────────────────────────
     subparsers.add_parser(
         "schedule",
@@ -91,6 +111,16 @@ def main() -> None:
         from jobs.sync_ratios import run
         symbols = [s.upper() for s in args.symbol] if args.symbol else None
         result = run(symbols=symbols, max_workers=args.workers)
+        logger.info(f"Kết quả: {result}")
+
+    elif args.command == "sync_prices":
+        from jobs.sync_prices import run
+        symbols = [s.upper() for s in args.symbol] if args.symbol else None
+        result = run(
+            symbols=symbols,
+            max_workers=args.workers,
+            full_history=args.full_history,
+        )
         logger.info(f"Kết quả: {result}")
 
     elif args.command == "schedule":
