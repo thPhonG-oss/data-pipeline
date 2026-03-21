@@ -52,6 +52,7 @@ CONFLICT_KEYS: dict[str, list[str]] = {
     "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
     "corporate_events":  ["symbol", "event_list_code", "record_date"],
     "price_history":     ["symbol", "date", "source"],
+    "price_intraday":    ["symbol", "time", "resolution"],
 }
 
 # ── Cột do server tự sinh, không được ghi vào INSERT/UPDATE ───────────────────

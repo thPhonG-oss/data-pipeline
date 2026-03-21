@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     dnse_username: str = ""   # Email hoặc SĐT đăng ký tài khoản DNSE
     dnse_password: str = ""   # Mật khẩu đăng nhập DNSE
 
+    # ── Real-time pipeline ─────────────────────────────────────
+    # CSV danh sách symbol, vd: "HPG,VCB,FPT". Rỗng = dùng VN30 từ DB.
+    realtime_watchlist: str = ""
+    # Timeframes cần subscribe, phân cách bằng dấu phẩy: "1,5"
+    realtime_resolutions: str = "1,5"
+
     # ── Alert ─────────────────────────────────────────────────
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
