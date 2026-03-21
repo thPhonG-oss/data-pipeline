@@ -11,7 +11,11 @@ from db.connection import engine
 from etl.extractors.finance import FinanceExtractor
 from etl.loaders.postgres import PostgresLoader
 from etl.transformers.finance import FinanceTransformer
+from etl.validators.cross_source import FinanceCrossValidator
 from utils.logger import logger
+
+# Chỉ validate các bảng này (không validate ratio)
+_VALIDATE_REPORT_TYPES = {"balance_sheet", "income_statement", "cash_flow"}
 
 _TABLE_MAP = {
     "balance_sheet":    "balance_sheets",
@@ -93,11 +97,12 @@ def run(
         f"({max_workers} luồng)."
     )
 
-    extractor = FinanceExtractor(source=settings.vnstock_source)
+    extractor  = FinanceExtractor(source=settings.vnstock_source)
     transformer = FinanceTransformer()
-    loader = PostgresLoader()
+    loader     = PostgresLoader()
+    validator  = FinanceCrossValidator()
 
-    totals = {"success": 0, "failed": 0, "skipped": 0, "rows": 0}
+    totals = {"success": 0, "failed": 0, "skipped": 0, "rows": 0, "flags": 0}
 
     # Tạo danh sách tất cả tasks: (symbol, report_type)
     tasks = [(sym, rt) for sym in symbols for rt in report_types]
@@ -107,15 +112,33 @@ def run(
             pool.submit(_run_one, sym, rt, extractor, transformer, loader): (sym, rt)
             for sym, rt in tasks
         }
+        # Theo dõi symbol nào đã sync xong đủ các report cần validate
+        sym_report_done: dict[str, set] = {sym: set() for sym in symbols}
+
         for future in as_completed(futures):
             result = future.result()
             totals[result["status"]] += 1
             totals["rows"] += result["rows"]
 
+            sym = result["symbol"]
+            rt  = result["report_type"]
+            if result["status"] == "success" and rt in _VALIDATE_REPORT_TYPES:
+                sym_report_done[sym].add(rt)
+
+            # Khi đủ 3 loại BCTC cần validate → chạy cross-validate
+            if sym_report_done[sym] >= _VALIDATE_REPORT_TYPES:
+                sym_report_done[sym] = set()   # Reset tránh validate lại
+                try:
+                    flags = validator.validate_symbol(sym)
+                    totals["flags"] += flags
+                except Exception as exc:
+                    logger.warning(f"[sync_financials] Cross-validate {sym} lỗi: {exc}")
+
     logger.info(
         f"[sync_financials] Xong. "
         f"Success={totals['success']} | Failed={totals['failed']} | "
-        f"Skipped={totals['skipped']} | Rows={totals['rows']}"
+        f"Skipped={totals['skipped']} | Rows={totals['rows']} | "
+        f"Flags={totals['flags']}"
     )
     return totals
 
