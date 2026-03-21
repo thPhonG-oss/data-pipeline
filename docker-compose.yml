@@ -1,0 +1,39 @@
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockapp_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-stockapp}
+      POSTGRES_USER:     ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d   # Tự chạy migrations khi init lần đầu
+    ports:
+      - "5432:5432"   # Expose để web application kết nối từ ngoài
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Pipeline Service ────────────────────────────────────────────────────────
+  pipeline:
+    build: .
+    container_name: stockapp_pipeline
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres   # Kết nối nội bộ qua tên service, không qua localhost
+    volumes:
+      - ./logs:/app/logs  # Log ghi ra máy host — xem được mà không cần vào container
+      # Flag file .vnstock_installed nằm trong ./logs/ → tồn tại qua các lần rebuild
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

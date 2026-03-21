@@ -38,7 +38,7 @@ class PostgresLoader(BaseLoader):
         Bảng phải tồn tại trong DB trước khi load.
         """
         if table_name not in self._metadata.tables:
-            self._metadata.reflect(bind=engine, only=[table_name])
+            self._metadata.reflect(bind=engine, only=[table_name], resolve_fks=False)
         if table_name not in self._metadata.tables:
             raise RuntimeError(
                 f"Bảng '{table_name}' không tồn tại trong DB. "
@@ -101,8 +101,8 @@ class PostgresLoader(BaseLoader):
         total = 0
         records = df_to_records(df_filtered)
 
-        for chunk in chunk_dataframe(pd.DataFrame(records), self.chunk_size):
-            chunk_records = chunk.to_dict(orient="records")
+        for start in range(0, len(records), self.chunk_size):
+            chunk_records = records[start : start + self.chunk_size]
             if not chunk_records:
                 continue
 

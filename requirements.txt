@@ -1,5 +1,5 @@
 # ── Scheduling ───────────────────────────────────────────
-APScheduler==3.10.4
+APScheduler>=3.10.4,<4.0
 
 # ── Database ─────────────────────────────────────────────
 SQLAlchemy==2.0.30
@@ -17,6 +17,7 @@ loguru==0.7.2
 
 # ── Utilities ────────────────────────────────────────────
 tenacity==8.2.3
+requests>=2.31
 
 # --- Optional: For development and testing ---
 pandas

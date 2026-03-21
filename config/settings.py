@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_dir: str = "logs"
 
+    # ── Scheduler (cron expressions — chuẩn Unix 5-field) ────
+    cron_sync_listing:    str = "0 1 * * 0"       # Chủ Nhật 01:00
+    cron_sync_financials: str = "0 3 1,15 * *"    # Ngày 1 & 15 hàng tháng 03:00
+    cron_sync_company:    str = "0 2 * * 1"        # Thứ Hai 02:00
+    cron_sync_ratios:     str = "30 18 * * *"      # Hàng ngày 18:30
+    cron_alert_check:     str = "0 * * * *"        # Hàng giờ :00
+
+    # ── Alert ─────────────────────────────────────────────────
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    alert_fail_threshold: int = 3
+
     @computed_field
     @property
     def database_url(self) -> str:

@@ -24,21 +24,30 @@ def sanitize_for_postgres(df: pd.DataFrame) -> pd.DataFrame:
         df[col] = df[col].where(df[col].notna(), other=None)
 
         # Numpy int64/float64 → Python int/float để tránh lỗi JSONB serialization
+        # pd.isna() xử lý cả float NaN lẫn pd.NA (pandas nullable Int64)
+        # .astype(object) ngăn pandas tự động chuyển None → NaN khi gán lại vào DataFrame
         if pd.api.types.is_integer_dtype(df[col]):
             df[col] = df[col].apply(
-                lambda x: int(x) if x is not None else None
-            )
+                lambda x: int(x) if x is not None and not pd.isna(x) else None
+            ).astype(object)
         elif pd.api.types.is_float_dtype(df[col]):
             df[col] = df[col].apply(
                 lambda x: float(x) if (x is not None and not math.isnan(x)) else None
-            )
+            ).astype(object)
 
     return df
 
 
 def df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     """Chuyển DataFrame thành list[dict] đã sanitize, sẵn sàng insert."""
-    return sanitize_for_postgres(df).to_dict(orient="records")
+    records = sanitize_for_postgres(df).to_dict(orient="records")
+    # Final pass: replace any remaining float nan with None.
+    # Occurs when pandas converts Int64 (pd.NA) → float64 (nan) during apply().
+    for rec in records:
+        for k, v in rec.items():
+            if isinstance(v, float) and math.isnan(v):
+                rec[k] = None
+    return records
 
 
 def chunk_dataframe(
