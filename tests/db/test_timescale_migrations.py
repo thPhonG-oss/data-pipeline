@@ -156,7 +156,7 @@ def test_check_timescale_script_exists():
 
 
 def test_check_timescale_imports_are_correct():
-    script = (Path(__file__).parent.parent.parent / "db" / "check_timescale.py").read_text()
+    script = (Path(__file__).parent.parent.parent / "db" / "check_timescale.py").read_text(encoding="utf-8")
     assert "timescaledb_information" in script   # queries TimescaleDB catalog
     assert "hypertables" in script
     assert "policy_retention" in script       # retention policy jobs
