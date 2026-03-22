@@ -65,3 +65,46 @@ def test_009_primary_key_time_is_leading_column():
     assert re.search(r"ADD PRIMARY KEY\s*\(\s*time\b", sql), (
         "PK must start with 'time' as leading column for TimescaleDB partitioning"
     )
+
+
+def test_010_drops_id_column_price_history():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert any(
+        "DROP COLUMN" in line and "id" in line
+        for line in sql.splitlines()
+    ), "Expected 'DROP COLUMN ... id' on a single line"
+
+
+def test_010_creates_hypertable_price_history():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert re.search(
+        r"create_hypertable\s*\(\s*'price_history'\s*,\s*'date'", sql
+    ), "Expected create_hypertable('price_history', 'date', ...)"
+
+
+def test_010_chunk_interval_is_integer_not_interval():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert "chunk_time_interval => 90" in sql, (
+        "price_history.date is a DATE column: chunk_time_interval must be integer (90), "
+        "not INTERVAL — see TimescaleDB docs"
+    )
+
+
+def test_010_primary_key_is_idempotent():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert "DO $$" in sql or "DO $block$" in sql
+    assert "ADD PRIMARY KEY" in sql
+
+
+def test_010_primary_key_date_is_leading_column():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert re.search(r"ADD PRIMARY KEY\s*\(\s*date\b", sql), (
+        "PK must start with 'date' as leading column for TimescaleDB partitioning"
+    )
+
+
+def test_010_adds_compression_policy():
+    sql = _read("010_timescaledb_price_history.sql")
+    assert "timescaledb.compress" in sql
+    assert "add_compression_policy" in sql
+    assert "'price_history'" in sql
