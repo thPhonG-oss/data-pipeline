@@ -57,3 +57,11 @@ def test_009_primary_key_is_idempotent():
         "ADD PRIMARY KEY must be wrapped in a DO block to be idempotent"
     )
     assert "ADD PRIMARY KEY" in sql
+
+
+def test_009_primary_key_time_is_leading_column():
+    sql = _read("009_timescaledb_setup.sql")
+    # time must be the leading PK column for optimal TimescaleDB chunk pruning
+    assert re.search(r"ADD PRIMARY KEY\s*\(\s*time\b", sql), (
+        "PK must start with 'time' as leading column for TimescaleDB partitioning"
+    )

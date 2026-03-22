@@ -20,7 +20,7 @@ BEGIN
         SELECT 1 FROM pg_constraint
         WHERE conname = 'price_intraday_pkey' AND contype = 'p'
     ) THEN
-        ALTER TABLE price_intraday ADD PRIMARY KEY (symbol, time, resolution);
+        ALTER TABLE price_intraday ADD PRIMARY KEY (time, symbol, resolution);
     END IF;
 END $$;
 
