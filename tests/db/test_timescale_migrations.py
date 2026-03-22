@@ -108,3 +108,43 @@ def test_010_adds_compression_policy():
     assert "timescaledb.compress" in sql
     assert "add_compression_policy" in sql
     assert "'price_history'" in sql
+
+
+def test_011_creates_cagg_5m_from_price_intraday():
+    sql = _read("011_continuous_aggregates.sql")
+    assert "cagg_ohlc_5m" in sql
+    assert "timescaledb.continuous" in sql
+    assert re.search(r"FROM\s+price_intraday", sql), "cagg_ohlc_5m must query FROM price_intraday"
+    assert re.search(r"resolution\s*=\s*1", sql), "Must filter WHERE resolution = 1 (1m candles only)"
+
+
+def test_011_creates_cagg_1h_from_cagg_5m():
+    sql = _read("011_continuous_aggregates.sql")
+    assert "cagg_ohlc_1h" in sql
+    assert re.search(r"FROM\s+cagg_ohlc_5m", sql), "cagg_ohlc_1h must query FROM cagg_ohlc_5m"
+
+
+def test_011_creates_cagg_1d_from_cagg_1h():
+    sql = _read("011_continuous_aggregates.sql")
+    assert "cagg_ohlc_1d" in sql
+    assert re.search(r"FROM\s+cagg_ohlc_1h", sql), "cagg_ohlc_1d must query FROM cagg_ohlc_1h"
+
+
+def test_011_adds_refresh_policies_for_all_three():
+    sql = _read("011_continuous_aggregates.sql")
+    count = sql.count("add_continuous_aggregate_policy")
+    assert count >= 3, f"Expected >= 3 refresh policies, found {count}"
+
+
+def test_011_uses_first_last_with_two_args():
+    sql = _read("011_continuous_aggregates.sql")
+    assert re.search(r"first\(\w+\s*,\s*\w+\)", sql), "first() must have 2 args: first(value, time)"
+    assert re.search(r"last\(\w+\s*,\s*\w+\)", sql), "last() must have 2 args: last(value, time)"
+
+
+def test_011_source_caggs_use_materialized_only_true():
+    sql = _read("011_continuous_aggregates.sql")
+    assert sql.count("materialized_only = TRUE") >= 2, (
+        "cagg_ohlc_5m and cagg_ohlc_1h must set materialized_only = TRUE "
+        "(required for hierarchical CAgg sources in TimescaleDB 2.x)"
+    )
