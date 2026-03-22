@@ -82,11 +82,13 @@ def test_010_creates_hypertable_price_history():
     ), "Expected create_hypertable('price_history', 'date', ...)"
 
 
-def test_010_chunk_interval_is_integer_not_interval():
+def test_010_chunk_interval_is_90_days():
     sql = _read("010_timescaledb_price_history.sql")
-    assert "chunk_time_interval => 90" in sql, (
-        "price_history.date is a DATE column: chunk_time_interval must be integer (90), "
-        "not INTERVAL — see TimescaleDB docs"
+    # TimescaleDB 2.x interprets bare integer as microseconds, not days.
+    # Must use INTERVAL '90 days' to get correct 90-day chunks.
+    assert "INTERVAL '90 days'" in sql, (
+        "chunk_time_interval must be INTERVAL '90 days' — bare integer 90 is "
+        "interpreted as 90 microseconds in TimescaleDB 2.x"
     )
 
 

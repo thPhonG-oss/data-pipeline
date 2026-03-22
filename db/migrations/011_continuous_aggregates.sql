@@ -21,10 +21,11 @@ FROM price_intraday
 WHERE resolution = 1
 GROUP BY symbol, time_bucket('5 minutes'::interval, time);
 
--- Refresh: cập nhật từ 10 phút trước đến 1 phút trước, mỗi 1 phút
+-- Refresh: window >= 2 * 5min buckets → start - end >= 10min
+-- start=15min, end=1min → window=14min ≥ 10min ✓
 SELECT add_continuous_aggregate_policy(
     'cagg_ohlc_5m',
-    start_offset      => INTERVAL '10 minutes',
+    start_offset      => INTERVAL '15 minutes',
     end_offset        => INTERVAL '1 minute',
     schedule_interval => INTERVAL '1 minute',
     if_not_exists     => TRUE
@@ -46,10 +47,11 @@ SELECT
 FROM cagg_ohlc_5m
 GROUP BY symbol, time_bucket('1 hour'::interval, bucket);
 
--- Refresh: cập nhật từ 1 giờ trước đến 5 phút trước, mỗi 5 phút
+-- Refresh: window >= 2 * 1hr buckets → start - end >= 120min
+-- start=3hr, end=5min → window=175min ≥ 120min ✓
 SELECT add_continuous_aggregate_policy(
     'cagg_ohlc_1h',
-    start_offset      => INTERVAL '1 hour',
+    start_offset      => INTERVAL '3 hours',
     end_offset        => INTERVAL '5 minutes',
     schedule_interval => INTERVAL '5 minutes',
     if_not_exists     => TRUE
@@ -71,10 +73,11 @@ SELECT
 FROM cagg_ohlc_1h
 GROUP BY symbol, time_bucket('1 day'::interval, bucket);
 
--- Refresh: cập nhật từ 1 ngày trước đến 1 giờ trước, mỗi 1 giờ
+-- Refresh: window >= 2 * 1day buckets → start - end >= 48hr
+-- start=3 days, end=1hr → window=71hr ≥ 48hr ✓
 SELECT add_continuous_aggregate_policy(
     'cagg_ohlc_1d',
-    start_offset      => INTERVAL '1 day',
+    start_offset      => INTERVAL '3 days',
     end_offset        => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour',
     if_not_exists     => TRUE

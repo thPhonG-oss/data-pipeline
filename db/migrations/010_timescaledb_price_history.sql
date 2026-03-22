@@ -21,13 +21,13 @@ BEGIN
 END $$;
 
 -- Bước 3: Convert sang hypertable, partition theo 'date', chunk = 90 ngày
--- QUAN TRỌNG: price_history.date là kiểu DATE (không phải TIMESTAMPTZ).
--- TimescaleDB yêu cầu chunk_time_interval là INTEGER (số ngày) cho cột DATE.
--- Dùng 90 (ngày) thay vì INTERVAL '3 months' — INTERVAL sẽ báo lỗi với DATE.
+-- Ghi chú: TimescaleDB 2.x (v2.9+) chấp nhận INTERVAL cho cả cột DATE.
+-- integer 90 bị interpret là 90 microseconds (không phải 90 ngày) trong v2.x —
+-- dùng INTERVAL '90 days' để tránh lỗi "invalid interval for date dimension".
 SELECT create_hypertable(
     'price_history',
     'date',
-    chunk_time_interval => 90,
+    chunk_time_interval => INTERVAL '90 days',
     if_not_exists        => TRUE,
     migrate_data         => TRUE
 );
