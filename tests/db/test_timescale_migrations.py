@@ -148,3 +148,16 @@ def test_011_source_caggs_use_materialized_only_true():
         "cagg_ohlc_5m and cagg_ohlc_1h must set materialized_only = TRUE "
         "(required for hierarchical CAgg sources in TimescaleDB 2.x)"
     )
+
+
+def test_check_timescale_script_exists():
+    script = Path(__file__).parent.parent.parent / "db" / "check_timescale.py"
+    assert script.exists(), "db/check_timescale.py not found"
+
+
+def test_check_timescale_imports_are_correct():
+    script = (Path(__file__).parent.parent.parent / "db" / "check_timescale.py").read_text()
+    assert "timescaledb_information" in script   # queries TimescaleDB catalog
+    assert "hypertables" in script
+    assert "policy_retention" in script       # retention policy jobs
+    assert "policy_compression" in script     # compression policy jobs
