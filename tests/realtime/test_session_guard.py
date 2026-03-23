@@ -17,12 +17,12 @@ _TZ = zoneinfo.ZoneInfo("Asia/Ho_Chi_Minh")
     (datetime(2026, 3, 28, 10, 0, tzinfo=_TZ),  False),
     # Sunday — weekend
     (datetime(2026, 3, 29, 10, 0, tzinfo=_TZ),  False),
-    # Monday 08:44 — too early
-    (datetime(2026, 3, 23, 8, 44, tzinfo=_TZ),  False),
+    # Monday 06:59 — too early (SESSION_START = 07:00)
+    (datetime(2026, 3, 23, 6, 59, tzinfo=_TZ),  False),
     # Monday 15:11 — too late
     (datetime(2026, 3, 23, 15, 11, tzinfo=_TZ), False),
-    # Monday 08:45 — start of window (inclusive)
-    (datetime(2026, 3, 23, 8, 45, tzinfo=_TZ),  True),
+    # Monday 07:00 — start of window (inclusive)
+    (datetime(2026, 3, 23, 7, 0, tzinfo=_TZ),   True),
     # Monday 15:10 — end of window (inclusive)
     (datetime(2026, 3, 23, 15, 10, tzinfo=_TZ), True),
 ])

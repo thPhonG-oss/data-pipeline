@@ -2,7 +2,8 @@
 
 > Tài liệu này dành cho thành viên team muốn đọc hiểu, tùy chỉnh, hoặc tối ưu pipeline.
 > Không yêu cầu kiến thức trước — chỉ cần biết Python cơ bản và SQL.
-> Cập nhật: 2026-03-23
+
+> Cập nhật: 2026-03-24
 
 ---
 
@@ -626,7 +627,7 @@ Mỗi job là module độc lập với hàm `run()` làm entry point.
 
 ```python
 result = run()
-# result = {"icb_industries": 249, "companies": 1547}
+# result = {"icb_industries": 249, "companies": 1981}
 ```
 
 Chạy tuần tự (không song song): `icb_industries` trước, `companies` sau (FK dependency).
@@ -662,10 +663,12 @@ result = run(symbols=None, max_workers=5)
 
 ```python
 result = run(symbols=None, max_workers=5)
-# result = {"success": 1525, "failed": 0, "skipped": 22, "rows": 7625}
+# result = {"success": 1526, "failed": 0, "skipped": ~22, "rows": ~7630}
 ```
 
 Job đơn giản nhất: 1 extractor → 1 transformer → 1 loader. Chạy hàng ngày 18:30.
+
+> **Thực tế (2026-03-24):** 1,526 symbols có ratio_summary, ~22 mã bị skip (API không trả data — bình thường với mã ít thanh khoản).
 
 ### 7.5 `sync_prices.py`
 
@@ -777,15 +780,25 @@ symbols = wl.get_symbols()  # list[str], đã deduplicate
 2. Query DB: `SELECT symbol FROM companies WHERE status='listed' AND index_code LIKE '%VN30%'`
 3. **Fallback hardcode:** 30 mã VN30 nếu DB lỗi hoặc không có cột `index_code`
 
+> **Lưu ý (2026-03-24):** Bảng `companies` hiện **chưa có cột `index_code`** → DB query luôn fail và rơi vào fallback VN30 hardcode. Đây là behavior đúng — 30 mã vẫn subscribe đủ. Cần thêm migration để đồng bộ `index_code` từ vnstock nếu muốn watchlist tự động cập nhật.
+
 ### 9.4 `realtime/session_guard.py`
 
 ```python
 from realtime.session_guard import is_trading_hours
 
-is_trading_hours()  # True nếu Thứ 2–6, 08:45 ≤ now ≤ 15:10 (Asia/Ho_Chi_Minh)
+is_trading_hours()  # True nếu Thứ 2–6, 07:00 ≤ now ≤ 15:10 (Asia/Ho_Chi_Minh)
 ```
 
-Subscriber kiểm tra session_guard trước khi connect MQTT. Processor kiểm tra để pause trong giờ không giao dịch.
+```python
+# realtime/session_guard.py
+_SESSION_START = time(7, 0)    # Khởi động sớm để kết nối MQTT trước ATO
+_SESSION_END   = time(15, 10)  # Đóng 10 phút sau ATC
+```
+
+> **Cập nhật 2026-03-24:** `_SESSION_START` thay đổi từ `08:45` → `07:00` để subscriber có thể connect MQTT và warm up trước giờ ATO (09:00). Dữ liệu candle thực tế chỉ bắt đầu sau ATO.
+
+Subscriber kiểm tra session_guard ngay khi khởi động (`__main__` block) — nếu ngoài giờ thì `sys.exit(0)`. Docker sẽ restart container → tiếp tục kiểm tra cho đến khi đúng giờ.
 
 ### 9.5 `realtime/subscriber.py` — MQTTSubscriber
 
@@ -844,15 +857,36 @@ redis.xack(stream, group, message_id)
 ### 9.7 Smoke test
 
 ```bash
+# Bước 1: Start infrastructure
+docker compose up -d postgres redis
+
+# Bước 2: Chạy 2 terminals
+run_realtime_processor.bat    # terminal 1
+run_realtime_subscriber.bat   # terminal 2
+
+# Bước 3: Kiểm tra sau 5 phút
 python check_realtime.py
 ```
 
-Kiểm tra:
-- Độ dài Redis streams (`stream:ohlc:1m`, `stream:ohlc:5m`)
-- Số rows trong `price_intraday`
-- Thời gian candle mới nhất
+`check_realtime.py` kiểm tra:
+- Redis ping + độ dài `stream:ohlc:1m`, `stream:ohlc:5m`
+- Rows trong `price_intraday` (symbol, resolution, candle range)
 
-> Chạy trong giờ giao dịch (T2–6, 08:45–15:10 ICT).
+> Chạy trong giờ giao dịch (T2–6, **07:00–15:10** ICT). Dữ liệu candle thực bắt đầu sau ATO (09:00).
+
+**Kết quả smoke test 2026-03-24 (pre-market, 07:26 ICT):**
+
+| Hạng mục | Kết quả |
+|---|---|
+| JWT Auth DNSE | ✅ PASS — `investorId=1002161780` |
+| MQTT Connection | ✅ PASS — kết nối `datafeed-lts-krx.dnse.com.vn:443` |
+| Topic Subscribe | ✅ PASS — 60 topics (30 VN30 × 1m + 5m) |
+| Redis Consumer Groups | ✅ PASS — `ohlc-processors` tạo thành công |
+| Stream Processor | ✅ PASS — `worker-MSI-*` khởi động |
+| Watchlist DB | ⚠️ Fallback — cột `index_code` chưa có → dùng VN30 hardcode (không blocking) |
+| Data flow (trong giờ) | ⏳ Chờ xác nhận sau ATO 09:00 |
+
+Xem chi tiết: `docs/smoke_test_realtime_2026-03-24.md`
 
 ---
 
@@ -979,21 +1013,29 @@ docker-compose.yml
 │   └── Expose port 6379
 │
 ├── pipeline  (build từ Dockerfile)
+│   ├── entrypoint: entrypoint.sh  ← cài vnstock_data, check PG, chạy scheduler
+│   ├── build arg: VNSTOCK_API_KEY (cài vnstock_data tại build time)
 │   ├── command: python main.py schedule
 │   ├── Depends on: postgres (healthy)
 │   └── Mount ./logs → /app/logs
 │
 ├── realtime-subscriber  (build từ Dockerfile)
+│   ├── entrypoint: entrypoint_realtime.sh  ← KHÔNG cài vnstock (không cần)
+│   ├── VNSTOCK_API_KEY="" (override — tránh tiêu thụ OS slot)
 │   ├── command: python -m realtime.subscriber
 │   ├── Depends on: postgres (healthy), redis (healthy)
 │   └── Mount ./logs → /app/logs
 │
 └── realtime-processor  (build từ Dockerfile)
+    ├── entrypoint: entrypoint_realtime.sh  ← KHÔNG cài vnstock (không cần)
+    ├── VNSTOCK_API_KEY="" (override — tránh tiêu thụ OS slot)
     ├── command: python -m realtime.processor
     ├── Depends on: postgres (healthy), redis (healthy)
     ├── replicas: 1  (có thể scale lên)
     └── Mount ./logs → /app/logs
 ```
+
+> **Quan trọng — giới hạn vnstock API key:** Gói Golden chỉ cho phép **2 thiết bị/OS** dùng cùng lúc. Nếu cả 3 containers đều chạy vnstock installer → vượt giới hạn. Giải pháp: chỉ `pipeline` dùng `entrypoint.sh` (cài vnstock); `realtime-subscriber` và `realtime-processor` dùng `entrypoint_realtime.sh` (bỏ qua installer, không dùng vnstock).
 
 ### 12.2 Lệnh vận hành thường dùng
 
@@ -1177,14 +1219,41 @@ docker compose up -d --scale realtime-processor=3
 `vnstock_data` là sponsor package, cần cài qua installer với API key.
 
 ```bash
-# Local: dùng venv đã cài
+# Local: dùng venv đã cài sẵn
 venv/Scripts/python main.py sync_ratios
 
-# Docker: VNSTOCK_API_KEY phải có trong .env
-# Force reinstall (xóa flag → installer chạy lại khi restart):
-rm ./logs/.vnstock_installed
-docker compose restart pipeline
+# Docker: cần xóa thiết bị cũ trên vnstocks.com, sau đó rebuild image pipeline:
+# 1. Vào https://vnstocks.com/account?section=devices → xóa thiết bị Docker cũ
+# 2. Rebuild (bake vnstock_data vào image tại build time):
+docker compose build pipeline
+docker compose up -d pipeline
 ```
+
+> **Nguyên nhân trong Docker:** Mỗi lần container bị recreate, `/root/.venv` (chứa `vnstock_data`) bị xóa. Flag file `.vnstock_installed` (trong volume `logs/`) vẫn còn → entrypoint bỏ qua installer → `vnstock_data` không tồn tại.
+> **Giải pháp lâu dài:** Build arg `VNSTOCK_API_KEY` trong Dockerfile để cài `vnstock_data` vào image tại build time (baked in) — không phụ thuộc runtime installer.
+
+### `❌ Vượt quá giới hạn thiết bị! (vnstock OS limit)`
+
+Gói Golden giới hạn 2 OS. Xảy ra khi nhiều containers cùng chạy vnstock installer.
+
+**Nguyên nhân:** `realtime-subscriber` và `realtime-processor` cùng build từ Dockerfile → cùng chạy entrypoint → 3 container = 3 OS slot.
+
+**Fix:** Đảm bảo chỉ `pipeline` dùng `entrypoint.sh`. Realtime containers phải dùng `entrypoint_realtime.sh`:
+
+```yaml
+# docker-compose.yml
+realtime-subscriber:
+  entrypoint: ["./entrypoint_realtime.sh"]
+  environment:
+    VNSTOCK_API_KEY: ""   # tắt vnstock hoàn toàn
+
+realtime-processor:
+  entrypoint: ["./entrypoint_realtime.sh"]
+  environment:
+    VNSTOCK_API_KEY: ""
+```
+
+Nếu vẫn bị block → xóa thiết bị cũ tại: https://vnstocks.com/account?section=devices
 
 ### `psycopg2.errors.ForeignKeyViolation`
 

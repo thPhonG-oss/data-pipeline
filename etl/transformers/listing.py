@@ -58,6 +58,34 @@ class ListingTransformer(BaseTransformer):
         logger.info(f"[icb_industries] Sau transform: {len(df)} ngành.")
         return df.reset_index(drop=True)
 
+    def transform_industries_from_json(self, records: list[dict]) -> pd.DataFrame:
+        """
+        Chuẩn hóa danh sách record từ load_icb_from_json() thành DataFrame.
+
+        Input:  list[dict] với keys icb_code, icb_name, en_icb_name, level,
+                            parent_code, definition
+        Output: DataFrame với cột icb_code (str), icb_name, en_icb_name,
+                level (int), parent_code, definition
+        """
+        df = pd.DataFrame(records)
+
+        # icb_code sang string (DB lưu VARCHAR)
+        df["icb_code"] = df["icb_code"].astype(str).str.strip()
+
+        # Đảm bảo level là int
+        df["level"] = pd.to_numeric(df["level"], errors="coerce").astype("Int64")
+
+        df = df[["icb_code", "icb_name", "en_icb_name", "level", "parent_code", "definition"]]
+
+        before = len(df)
+        df = df.dropna(subset=["icb_code", "icb_name", "level"])
+        dropped = before - len(df)
+        if dropped:
+            logger.warning(f"[icb_industries] Bỏ {dropped} dòng thiếu dữ liệu bắt buộc.")
+
+        logger.info(f"[icb_industries] Sau transform (JSON): {len(df)} ngành.")
+        return df.reset_index(drop=True)
+
     def transform_symbols(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Chuẩn hóa bảng companies.

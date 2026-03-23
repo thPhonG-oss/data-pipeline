@@ -29,11 +29,12 @@ def run() -> dict:
         "companies": {"status": "skipped", "records": 0},
     }
 
-    # ── 1. ICB Industries ──────────────────────────────────────────────────────
+    # ── 1. ICB Industries (từ file JSON cục bộ) ────────────────────────────────
     log_id = loader.load_log(job_name=JOB_SYNC_LISTING, status="running")
     try:
-        df_raw = extractor.extract_industries()
-        df = transformer.transform_industries(df_raw)
+        logger.info("[sync_listing] Đọc ICB từ file JSON cục bộ (không gọi vnstock API).")
+        records = extractor.load_icb_from_json()
+        df = transformer.transform_industries_from_json(records)
         rows = loader.load(df, "icb_industries", CONFLICT_KEYS["icb_industries"])
         results["icb_industries"] = {"status": "success", "records": rows}
         loader.load_log(
@@ -43,7 +44,7 @@ def run() -> dict:
             records_inserted=rows,
             log_id=log_id,
         )
-        logger.success(f"[sync_listing] icb_industries: {rows} rows upserted.")
+        logger.success(f"[sync_listing] icb_industries: {rows} rows upserted (source: local JSON).")
     except Exception as exc:
         results["icb_industries"]["status"] = "failed"
         logger.error(f"[sync_listing] icb_industries thất bại: {exc}")
