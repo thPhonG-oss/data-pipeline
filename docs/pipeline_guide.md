@@ -2,6 +2,7 @@
 
 > Tài liệu này dành cho thành viên team muốn đọc hiểu, tùy chỉnh, hoặc tối ưu pipeline.
 > Không yêu cầu kiến thức trước — chỉ cần biết Python cơ bản và SQL.
+
 > Cập nhật: 2026-03-24
 
 ---
@@ -397,8 +398,8 @@ data_quality_flags  (symbol, table_name, period, column_name, diff_pct, flagged_
 
 | Bảng | Mô tả | Số lượng row (~) |
 |---|---|---|
-| `icb_industries` | 4 cấp phân ngành ICB. Cột `definition TEXT` chứa mô tả chi tiết (chỉ có ở level 4, nguồn ICB FTSE Russell) | 249 ngành |
-| `companies` | Tất cả mã chứng khoán đang niêm yết | 1,981 mã (2026-03-24) |
+| `icb_industries` | 4 cấp phân ngành ICB. Cột `definition TEXT` chứa mô tả chi tiết (chỉ có ở level 4, nguồn ICB FTSE Russell) | ~249 ngành |
+| `companies` | Tất cả mã chứng khoán đang niêm yết | ~1,550 mã |
 
 **Báo cáo tài chính** (UNIQUE trên `(symbol, period, period_type)`):
 
