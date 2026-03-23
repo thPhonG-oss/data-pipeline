@@ -1,0 +1,3 @@
+[32m2026-03-23 07:26:34[0m | [1mINFO    [0m | [36m__main__[0m:[36m109[0m — [1m[processor] Tạo consumer group 'ohlc-processors' cho stream:ohlc:1m.[0m
+[32m2026-03-23 07:26:34[0m | [1mINFO    [0m | [36m__main__[0m:[36m109[0m — [1m[processor] Tạo consumer group 'ohlc-processors' cho stream:ohlc:5m.[0m
+[32m2026-03-23 07:26:34[0m | [1mINFO    [0m | [36m__main__[0m:[36m89[0m — [1m[processor] Bắt đầu — consumer: worker-MSI-10580[0m

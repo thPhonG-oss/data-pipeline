@@ -2,7 +2,7 @@ services:
 
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: stockapp_db
     restart: unless-stopped
     environment:
@@ -42,7 +42,10 @@ services:
 
   # ── Batch Pipeline (APScheduler) ─────────────────────────────────────────────
   pipeline:
-    build: .
+    build:
+      context: .
+      args:
+        VNSTOCK_API_KEY: ${VNSTOCK_API_KEY}
     container_name: stockapp_pipeline
     restart: unless-stopped
     command: python main.py schedule
@@ -61,11 +64,13 @@ services:
     build: .
     container_name: stockapp_rt_subscriber
     restart: unless-stopped
+    entrypoint: ["./entrypoint_realtime.sh"]
     env_file: .env
     environment:
       DB_HOST: postgres
       REDIS_HOST: redis
-    command: python -m realtime.subscriber
+      VNSTOCK_API_KEY: ""   # không cần vnstock
+    command: ["python", "-m", "realtime.subscriber"]
     volumes:
       - ./logs:/app/logs
     depends_on:
@@ -79,11 +84,13 @@ services:
     build: .
     container_name: stockapp_rt_processor
     restart: unless-stopped
+    entrypoint: ["./entrypoint_realtime.sh"]
     env_file: .env
     environment:
       DB_HOST: postgres
       REDIS_HOST: redis
-    command: python -m realtime.processor
+      VNSTOCK_API_KEY: ""   # không cần vnstock
+    command: ["python", "-m", "realtime.processor"]
     volumes:
       - ./logs:/app/logs
     depends_on:

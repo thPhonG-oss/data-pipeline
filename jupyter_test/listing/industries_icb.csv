@@ -37,16 +37,6 @@ Quỹ đầu tư,Equity Investment Instruments,8980,3
 Phần mềm & Dịch vụ Máy tính,Software & Computer Services,9530,3
 Thiết bị và Phần cứng,Technology Hardware & Equipment,9570,3
 Dầu khí,Oil & Gas,0001,1
-Nguyên vật liệu,Basic Materials,1000,1
-Công nghiệp,Industrials,2000,1
-Hàng Tiêu dùng,Consumer Goods,3000,1
-Dược phẩm và Y tế,Health Care,4000,1
-Dịch vụ Tiêu dùng,Consumer Services,5000,1
-Viễn thông,Telecommunications,6000,1
-Tiện ích Cộng đồng,Utilities,7000,1
-Tài chính,Financials,8000,1
-Ngân hàng,Banks,8301,1
-Công nghệ Thông tin,Technology,9000,1
 Dầu khí,Oil & Gas,0500,2
 Hóa chất,Chemicals,1300,2
 Tài nguyên Cơ bản,Basic Resources,1700,2
@@ -154,3 +144,13 @@ Phần mềm,Software,9537,4
 Phần cứng,Computer Hardware,9572,4
 Thiết bị văn phòng,Electronic Office Equipment,9574,4
 Thiết bị viễn thông,Telecommunications Equipment,9578,4
+Nguyên vật liệu,Basic Materials,1000,1
+Công nghiệp,Industrials,2000,1
+Hàng Tiêu dùng,Consumer Goods,3000,1
+Dược phẩm và Y tế,Health Care,4000,1
+Dịch vụ Tiêu dùng,Consumer Services,5000,1
+Viễn thông,Telecommunications,6000,1
+Tiện ích Cộng đồng,Utilities,7000,1
+Tài chính,Financials,8000,1
+Ngân hàng,Banks,8301,1
+Công nghệ Thông tin,Technology,9000,1

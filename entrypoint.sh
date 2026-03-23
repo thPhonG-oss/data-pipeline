@@ -5,36 +5,25 @@ echo "================================================"
 echo "  Stock Pipeline — Starting"
 echo "================================================"
 
-# ── Bước 1: Cài vnstock sponsor package nếu có API key ───────────
-INSTALLER_FLAG="/app/logs/.vnstock_installed"  # Nằm trong volume mount → tồn tại qua rebuild
+# ── Bước 1: Thiết lập PYTHONPATH cho vnstock_data (cài tại build time) ──────
+# vnstock installer tạo /root/.venv — cần thêm /opt/venv site-packages vào PYTHONPATH
+# để /root/.venv/bin/python3 thấy được SQLAlchemy, APScheduler, v.v.
+VNSTOCK_SITE="/root/.venv/lib/python3.12/site-packages"
+OPT_VENV_SITE="/opt/venv/lib/python3.12/site-packages"
 
-if [ -z "$VNSTOCK_API_KEY" ]; then
-    echo "⚠️  VNSTOCK_API_KEY not set — running with base vnstock only"
+if [ -d "$VNSTOCK_SITE" ]; then
+    export PYTHONPATH="${OPT_VENV_SITE}:${PYTHONPATH:-}"
+    export PYTHON_BIN="/root/.venv/bin/python3"
+    echo "✓ Using /root/.venv python3 + /opt/venv site-packages"
 else
-    # Chỉ chạy installer một lần duy nhất
-    # Flag file đảm bảo restart container không cài lại
-    VNSTOCK_SITE="/root/.venv/lib/python3.12/site-packages"
-    if [ ! -f "$INSTALLER_FLAG" ] || [ ! -d "$VNSTOCK_SITE" ]; then
-        echo "✓ Installing vnstock sponsor packages..."
-        /app/vnstock-cli-installer.run -- --api-key "$VNSTOCK_API_KEY"
-        touch "$INSTALLER_FLAG"
-        echo "✓ Sponsor packages installed"
-    else
-        echo "✓ Sponsor packages already installed — skipping"
-    fi
-
-    # Installer tạo venv riêng tại /root/.venv — expose site-packages cho /opt/venv
-    # Pipeline dùng /opt/venv (có SQLAlchemy, APScheduler, v.v.)
-    # vnstock_data được cài vào /root/.venv → cần thêm vào PYTHONPATH
-    if [ -d "$VNSTOCK_SITE" ]; then
-        export PYTHONPATH="${VNSTOCK_SITE}:${PYTHONPATH:-}"
-        echo "✓ PYTHONPATH updated: vnstock_data packages accessible"
-    fi
+    export PYTHON_BIN="python3"
+    echo "⚠️  /root/.venv not found — using /opt/venv python3 (vnstock_data may be missing)"
 fi
 
 # ── Bước 2: Kiểm tra kết nối PostgreSQL ──────────────────────────
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 echo "⏳ Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT:-5432}..."
-until python3 -c "
+until $PYTHON_BIN -c "
 import psycopg2, os, sys
 try:
     psycopg2.connect(
@@ -55,4 +44,4 @@ echo "✅ PostgreSQL is ready"
 
 # ── Bước 3: Chạy pipeline ─────────────────────────────────────────
 echo "🚀 Starting scheduler..."
-exec python3 main.py schedule
+exec $PYTHON_BIN main.py schedule

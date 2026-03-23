@@ -3,7 +3,7 @@ from datetime import datetime, time
 import zoneinfo
 
 _TZ = zoneinfo.ZoneInfo("Asia/Ho_Chi_Minh")
-_SESSION_START = time(8, 45)   # Mở sớm 15 phút trước ATO
+_SESSION_START = time(7, 0)    # Khởi động sớm để kết nối MQTT trước ATO
 _SESSION_END   = time(15, 10)  # Đóng 10 phút sau ATC
 
 

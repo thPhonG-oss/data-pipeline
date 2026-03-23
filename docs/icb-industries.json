@@ -1,0 +1,1325 @@
+{
+  "industries": [
+    {
+      "id": 10,
+      "name": "Technology",
+      "supersectors": [
+        {
+          "id": 1010,
+          "name": "Technology",
+          "sectors": [
+            {
+              "id": 101010,
+              "name": "Software and Computer Services",
+              "subsectors": [
+                {
+                  "id": 10101010,
+                  "name": "Computer Services",
+                  "definition": "Companies that provide consulting or integration services to other businesses relating to information technology. Includes providers of computer-system design, systems integration, network and systems operations, cloud computing, distributed ledger technology (DLT) consulting and integration, data management and storage, repair services and technical support."
+                },
+                {
+                  "id": 10101015,
+                  "name": "Software",
+                  "definition": "Publishers and distributors of computer software for home or corporate use. Excludes computer game producers."
+                },
+                {
+                  "id": 10101020,
+                  "name": "Consumer Digital Services",
+                  "definition": "Companies involved in digital platforms that primarily generate revenue from advertising, content delivery and other virtual products for consumers. To a lesser extent, they generate subscription fee revenue through related services offered by the platform and/or by the advertisers to utilise data content and customer insight."
+                }
+              ]
+            },
+            {
+              "id": 101020,
+              "name": "Technology Hardware and Equipment",
+              "subsectors": [
+                {
+                  "id": 10102010,
+                  "name": "Semiconductors",
+                  "definition": "Producers and distributors of semiconductors and other integrated chips, including other products related to the semiconductor industry, such as motherboards. Excludes makers of printed circuit boards."
+                },
+                {
+                  "id": 10102015,
+                  "name": "Electronic Components",
+                  "definition": "Companies involved in the application of high-technology parts to finished products, including printed circuit boards. Excludes communications-related equipment and technology parts for consumer electronics."
+                },
+                {
+                  "id": 10102020,
+                  "name": "Production Technology Equipment",
+                  "definition": "Manufacturers of tools and/or devices that are used in the creation of semiconductors, lasers, photonics, wafers, and other high-technology components, including semiconductor capital equipment."
+                },
+                {
+                  "id": 10102030,
+                  "name": "Computer Hardware",
+                  "definition": "Manufacturers and distributors of computers, servers, mainframes, workstations and other computer hardware and subsystems, such as mass-storage drives, mice, keyboards, printers. Companies in this group can provide diverse applications for consumer and commercial use. Including companies providing computing hardware for cryptocurrency mining."
+                },
+                {
+                  "id": 10102035,
+                  "name": "Electronic Office Equipment",
+                  "definition": "Manufacturers and distributors of electronic office equipment including photocopiers and fax machines."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Telecommunications",
+      "supersectors": [
+        {
+          "id": 1510,
+          "name": "Telecommunications",
+          "sectors": [
+            {
+              "id": 151010,
+              "name": "Telecommunications Equipment",
+              "subsectors": [
+                {
+                  "id": 15101010,
+                  "name": "Telecommunications Equipment",
+                  "definition": "Makers and distributors of high-technology communication products, including satellites, mobile telephones, fibre optics, switching devices, local and wide-area networks, teleconferencing equipment and connectivity devices for computers, including hubs and routers."
+                }
+              ]
+            },
+            {
+              "id": 151020,
+              "name": "Telecommunications Service Providers",
+              "subsectors": [
+                {
+                  "id": 15102010,
+                  "name": "Cable Television Services",
+                  "definition": "Companies that distribute media content through cable and wireless networks, accessed through computers or televisions."
+                },
+                {
+                  "id": 15102015,
+                  "name": "Telecommunications Services",
+                  "definition": "Providers of mobile and fixed-line telephone services, including cellular, satellite and paging services. Includes wireless tower companies that own, operate and lease mobile site towers to multiple wireless service providers. Includes companies that primarily provides telephone services through the internet. Excludes companies whose primary business is internet access."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Health Care",
+      "supersectors": [
+        {
+          "id": 2010,
+          "name": "Health Care",
+          "sectors": [
+            {
+              "id": 201010,
+              "name": "Health Care Providers",
+              "subsectors": [
+                {
+                  "id": 20101010,
+                  "name": "Health Care Facilities",
+                  "definition": "Owners and operators of primary healthcare property, community hospitals, retirement homes, nursing homes, and related medical businesses."
+                },
+                {
+                  "id": 20101020,
+                  "name": "Health Care Management Services",
+                  "definition": "Companies that offer managed healthcare benefits and services including health management organisations (HMO), including state sponsored programs."
+                },
+                {
+                  "id": 20101025,
+                  "name": "Health Care Services",
+                  "definition": "Companies that provide various specialised disease management services to physicians, health plans, and hospitals. Primary business lines in this category can also include general consultation services, paramedical services, operation of health portals and distribution of health food products."
+                },
+                {
+                  "id": 20101030,
+                  "name": "Health Care: Misc.",
+                  "definition": "Includes healthcare companies that are not classified in the healthcare facilities, healthcare management services or healthcare services subsectors."
+                }
+              ]
+            },
+            {
+              "id": 201020,
+              "name": "Medical Equipment and Services",
+              "subsectors": [
+                {
+                  "id": 20102010,
+                  "name": "Medical Equipment",
+                  "definition": "Manufacturers and distributors of medical devices such as MRI scanners, prosthetics, pacemakers, X-ray machines and other non-disposable medical devices."
+                },
+                {
+                  "id": 20102015,
+                  "name": "Medical Supplies",
+                  "definition": "Manufacturers and distributors of medical supplies used by healthcare providers and the general public. Includes makers of contact lenses, eyeglass lenses, bandages and other disposable medical supplies."
+                },
+                {
+                  "id": 20102020,
+                  "name": "Medical Services",
+                  "definition": "Companies that operate and manage medical labs and testing services."
+                }
+              ]
+            },
+            {
+              "id": 201030,
+              "name": "Pharmaceuticals and Biotechnology",
+              "subsectors": [
+                {
+                  "id": 20103010,
+                  "name": "Biotechnology",
+                  "definition": "Companies engaged in research into and development of biological substances for the purposes of drug discovery and diagnostic development, and which derive the majority of their revenue from either the sale or licensing of these drugs and diagnostic tools."
+                },
+                {
+                  "id": 20103015,
+                  "name": "Pharmaceuticals",
+                  "definition": "Manufacturers of prescription or over-the-counter drugs, such as aspirin, cold remedies and birth control pills. Includes vaccine producers but excludes vitamin producers, which are classified under food products subsector."
+                },
+                {
+                  "id": 20103020,
+                  "name": "Cannabis Producers",
+                  "definition": "Companies that engage in cannabis cultivation, cannabis distribution including dispensaries, the processing and distribution of cannabis plants, and the creation of cannabis derivative products. Companies that primarily engage in the research, development and manufacturing of cannabis (THC/CBD) based drugs are classified in the biotechnology or the pharmaceuticals subsector."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Financials",
+      "supersectors": [
+        {
+          "id": 3010,
+          "name": "Banks",
+          "sectors": [
+            {
+              "id": 301010,
+              "name": "Banks",
+              "subsectors": [
+                {
+                  "id": 30101010,
+                  "name": "Banks",
+                  "definition": "Companies with a banking license which derive the greatest portion of their revenue from providing a broad range of banking services, including retail banking, loans, and money transmissions. Does not include investment banks which are classified under Investment Services."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3020,
+          "name": "Financial Services",
+          "sectors": [
+            {
+              "id": 302010,
+              "name": "Finance and Credit Services",
+              "subsectors": [
+                {
+                  "id": 30201020,
+                  "name": "Consumer Lending",
+                  "definition": "Companies that are not Banks that provide financial services to consumers or businesses including payday loans, student loans, automobile loans, business loans etc."
+                },
+                {
+                  "id": 30201025,
+                  "name": "Mortgage Finance",
+                  "definition": "Companies that are not Banks that provide mortgages, mortgage insurance and other related services."
+                },
+                {
+                  "id": 30201030,
+                  "name": "Financial Data Providers",
+                  "definition": "Companies which provide financial decision support tools for investment institutions. Including financial database operators and index data providers."
+                }
+              ]
+            },
+            {
+              "id": 302020,
+              "name": "Investment Banking and Brokerage Services",
+              "subsectors": [
+                {
+                  "id": 30202000,
+                  "name": "Diversified Financial Services",
+                  "definition": "Companies providing a range of financial services, none of which is the dominant business line. See Rule 4.2.3 for full details. Diversified Investment Holding companies engaged in acquiring equity stakes of securities are also classified in this group."
+                },
+                {
+                  "id": 30202010,
+                  "name": "Asset Managers and Custodians",
+                  "definition": "Companies that provide custodial, trustee and other related fiduciary services. i.e. mutual fund and private investment management. Also includes companies engaged in private equity and venture capital."
+                },
+                {
+                  "id": 30202015,
+                  "name": "Investment Services",
+                  "definition": "Companies that provide trading and brokerage services for financial assets such as equities, commodities, debts, currency, cryptocurrency. Also includes the operators of stock, currency, and other financial market exchanges as well as investment banks."
+                }
+              ]
+            },
+            {
+              "id": 302030,
+              "name": "Mortgage Real Estate Investment Trusts",
+              "subsectors": [
+                {
+                  "id": 30203000,
+                  "name": "Mortgage REITs: Diversified",
+                  "definition": "Mortgage REITs that invest in a combination of segments with no specific dominance over one or the other."
+                },
+                {
+                  "id": 30203010,
+                  "name": "Mortgage REITs: Commercial",
+                  "definition": "REITs primarily involved in lending money to commercial real estate owners and operators directly or indirectly through the purchase of mortgages, mortgage backed securities and other mortgage related assets."
+                },
+                {
+                  "id": 30203020,
+                  "name": "Mortgage REITs: Residential",
+                  "definition": "REITs primarily involved in lending money to residential real estate owners and operators directly or indirectly through the purchase of mortgages, mortgage backed securities and other mortgage related assets."
+                }
+              ]
+            },
+            {
+              "id": 302040,
+              "name": "Closed End Investments",
+              "subsectors": [
+                {
+                  "id": 30204000,
+                  "name": "Closed End Investments",
+                  "definition": "Corporate closed-ended investment entities identified under distinguishing legislation, such as investment trusts and venture capital trusts."
+                }
+              ]
+            },
+            {
+              "id": 302050,
+              "name": "Open End and Miscellaneous Investment Vehicles",
+              "subsectors": [
+                {
+                  "id": 30205000,
+                  "name": "Open End and Miscellaneous Investment Vehicles",
+                  "definition": "Cash shells, special purpose acquisition company (SPACs), non-corporate, open-ended investment instruments such as open-ended investment companies and funds, unit trusts, ETFs and currency funds and split capital trusts."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3030,
+          "name": "Insurance",
+          "sectors": [
+            {
+              "id": 303010,
+              "name": "Life Insurance",
+              "subsectors": [
+                {
+                  "id": 30301010,
+                  "name": "Life Insurance",
+                  "definition": "Companies engaged principally in life and health insurance."
+                }
+              ]
+            },
+            {
+              "id": 303020,
+              "name": "Nonlife Insurance",
+              "subsectors": [
+                {
+                  "id": 30302010,
+                  "name": "Full Line Insurance",
+                  "definition": "Companies that provide a wide range of insurance products such as a combination of life, property/casualty, and specialty insurance."
+                },
+                {
+                  "id": 30302015,
+                  "name": "Insurance Brokers",
+                  "definition": "Insurance brokers and agents."
+                },
+                {
+                  "id": 30302020,
+                  "name": "Reinsurance",
+                  "definition": "Companies engaged principally in reinsurance."
+                },
+                {
+                  "id": 30302025,
+                  "name": "Property and Casualty Insurance",
+                  "definition": "Companies engaged principally in accident, fire, automotive, marine, malpractice and other classes of nonlife insurance."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "name": "Real Estate",
+      "supersectors": [
+        {
+          "id": 3510,
+          "name": "Real Estate",
+          "sectors": [
+            {
+              "id": 351010,
+              "name": "Real Estate Investment and Services Development",
+              "subsectors": [
+                {
+                  "id": 35101010,
+                  "name": "Real Estate Holding and Development",
+                  "definition": "Companies that invest directly or indirectly in a variety of types of properties without a concentration on any single type."
+                },
+                {
+                  "id": 35101015,
+                  "name": "Real Estate Services",
+                  "definition": "Companies that provide services to real estate companies but do not own the properties themselves. Includes agencies, brokers, leasing companies, management companies and advisory services."
+                }
+              ]
+            },
+            {
+              "id": 351020,
+              "name": "Real Estate Investment Trusts",
+              "subsectors": [
+                {
+                  "id": 35102000,
+                  "name": "Diversified REITs",
+                  "definition": "REITs that invest in a combination of other defined REIT categories, none of which is the dominant business line."
+                },
+                {
+                  "id": 35102010,
+                  "name": "Health Care REITs",
+                  "definition": "REITs that primarily invest in healthcare facilities including hospitals, laboratories, nursing homes and assisted living properties."
+                },
+                {
+                  "id": 35102015,
+                  "name": "Hotel and Lodging REITs",
+                  "definition": "REITs that primarily invest in hotels, motels, resorts or other lodging properties."
+                },
+                {
+                  "id": 35102020,
+                  "name": "Industrial REITs",
+                  "definition": "REITs that primarily invest in industrial properties including industrial warehouses and distribution properties."
+                },
+                {
+                  "id": 35102025,
+                  "name": "Infrastructure REITs",
+                  "definition": "REITs that primarily invest in infrastructure assets including roads, bridges, tunnels, airports, power generation, fuels, pipelines, water and waste management and communication assets."
+                },
+                {
+                  "id": 35102030,
+                  "name": "Office REITs",
+                  "definition": "REITs that primarily invest in office properties."
+                },
+                {
+                  "id": 35102040,
+                  "name": "Residential REITs",
+                  "definition": "REITs that primarily invest in residential properties including manufactured homes, multifamily homes, apartments, and student housing properties."
+                },
+                {
+                  "id": 35102045,
+                  "name": "Retail REITs",
+                  "definition": "REITs that primarily invest in retail properties including malls, shopping centers, neighborhood and community shopping centers, strip malls, free standing stores, and factory outlets."
+                },
+                {
+                  "id": 35102050,
+                  "name": "Storage REITs",
+                  "definition": "REITs that primarily invest in public self-storage properties."
+                },
+                {
+                  "id": 35102060,
+                  "name": "Timber REITs",
+                  "definition": "REITs that primarily invest in timberland and timber-related products and activities."
+                },
+                {
+                  "id": 35102070,
+                  "name": "Other Specialty REITs",
+                  "definition": "REITs that primarily invest in any single type of facility or property not specifically defined within another REITs industry."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "Consumer Discretionary",
+      "supersectors": [
+        {
+          "id": 4010,
+          "name": "Automobiles and Parts",
+          "sectors": [
+            {
+              "id": 401010,
+              "name": "Automobiles and Parts",
+              "subsectors": [
+                {
+                  "id": 40101010,
+                  "name": "Auto Services",
+                  "definition": "Companies that provide assistance to individual vehicle owners."
+                },
+                {
+                  "id": 40101015,
+                  "name": "Tires",
+                  "definition": "Manufacturers, distributors and re-treaders of automobile, truck and motorcycle tires."
+                },
+                {
+                  "id": 40101020,
+                  "name": "Automobiles",
+                  "definition": "Makers of passenger vehicles, including cars, sport utility vehicles (SUVs) and light trucks. Excludes makers of heavy trucks and makers of recreational vehicles (RVs and ATVs)."
+                },
+                {
+                  "id": 40101025,
+                  "name": "Auto Parts",
+                  "definition": "Manufacturers and distributors of new and replacement parts for motorcycles and automobiles, such as engines, carburetors and batteries. Excludes producers of tires."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4020,
+          "name": "Consumer Products and Services",
+          "sectors": [
+            {
+              "id": 402010,
+              "name": "Consumer Services",
+              "subsectors": [
+                {
+                  "id": 40201010,
+                  "name": "Education Services",
+                  "definition": "Companies that own and manage higher education systems, post-secondary degree programs or other educational services."
+                },
+                {
+                  "id": 40201020,
+                  "name": "Funeral Parlors and Cemetery",
+                  "definition": "Companies that own and operate funeral homes, cemeteries, crematoriums and/or provide other funeral services."
+                },
+                {
+                  "id": 40201030,
+                  "name": "Printing and Copying Services",
+                  "definition": "Companies specialising in printing, copying and/or similar solutions for individuals and small businesses."
+                },
+                {
+                  "id": 40201040,
+                  "name": "Rental and Leasing",
+                  "definition": "Companies that lease automobiles, appliances, electronics or furniture to consumers."
+                },
+                {
+                  "id": 40201050,
+                  "name": "Storage Facilities",
+                  "definition": "Companies that own and operate storage facilities (does not include companies structured as REITs)."
+                },
+                {
+                  "id": 40201060,
+                  "name": "Vending and Catering Service",
+                  "definition": "Companies that provide catering and food service and/or food ingredients to individuals or institutions."
+                },
+                {
+                  "id": 40201070,
+                  "name": "Consumer Services: Misc.",
+                  "definition": "Consumer services companies that are not categorised in the other consumer services subsectors."
+                }
+              ]
+            },
+            {
+              "id": 402020,
+              "name": "Household Goods and Home Construction",
+              "subsectors": [
+                {
+                  "id": 40202010,
+                  "name": "Home Construction",
+                  "definition": "Constructors of residential homes, including manufacturers of mobile and prefabricated homes intended for use in one place. Excludes companies earning material revenue from property rental or leasing."
+                },
+                {
+                  "id": 40202015,
+                  "name": "Household Furnishings",
+                  "definition": "Manufacturers and distributors of furniture, including chairs, tables, desks, and office furniture."
+                },
+                {
+                  "id": 40202020,
+                  "name": "Household Appliance",
+                  "definition": "Companies that manufacture and market household electrical appliances."
+                },
+                {
+                  "id": 40202025,
+                  "name": "Household Equipment and Products",
+                  "definition": "Companies that manufacture and supply various household products. Includes manufacturers of gardening tools, kitchen utensils, dishes and other home related products."
+                }
+              ]
+            },
+            {
+              "id": 402030,
+              "name": "Leisure Goods",
+              "subsectors": [
+                {
+                  "id": 40203010,
+                  "name": "Consumer Electronics",
+                  "definition": "Companies involved in the application of technology and electronics to the consumer discretionary sector."
+                },
+                {
+                  "id": 40203040,
+                  "name": "Electronic Entertainment",
+                  "definition": "Companies that design, manufacture and market video game software and related elements."
+                },
+                {
+                  "id": 40203045,
+                  "name": "Toys",
+                  "definition": "Manufacturers and distributors of toys, including playing cards, board games, stuffed animals and dolls."
+                },
+                {
+                  "id": 40203050,
+                  "name": "Recreational Products",
+                  "definition": "Manufacturers and distributors of recreational equipment not classified in other 'leisure goods' categories."
+                },
+                {
+                  "id": 40203055,
+                  "name": "Recreational Vehicles and Boats",
+                  "definition": "Companies that design, manufacture and market recreation vehicles (RVs), motorcycles or passenger boats."
+                },
+                {
+                  "id": 40203060,
+                  "name": "Photography",
+                  "definition": "Companies that produce and/or market professional and/or personal imaging products including digital cameras and film cameras."
+                }
+              ]
+            },
+            {
+              "id": 402040,
+              "name": "Personal Goods",
+              "subsectors": [
+                {
+                  "id": 40204020,
+                  "name": "Clothing and Accessories",
+                  "definition": "Manufacturers and distributors of all types of clothing and accessories. Includes sportswear, sunglasses, eyeglass frames, leather clothing and goods."
+                },
+                {
+                  "id": 40204025,
+                  "name": "Footwear",
+                  "definition": "Manufacturers and distributors of shoes, boots, sandals, sneakers and other types of footwear."
+                },
+                {
+                  "id": 40204030,
+                  "name": "Luxury Items",
+                  "definition": "Companies that manufacture and market valuable jewellery, watches and gemstones."
+                },
+                {
+                  "id": 40204035,
+                  "name": "Cosmetics",
+                  "definition": "Companies that produce and market make-up and fragrance products (perfume). Excludes personal care products."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4030,
+          "name": "Media",
+          "sectors": [
+            {
+              "id": 403010,
+              "name": "Media",
+              "subsectors": [
+                {
+                  "id": 40301010,
+                  "name": "Entertainment",
+                  "definition": "Companies that provide various media services including feature films, music and television shows and stations."
+                },
+                {
+                  "id": 40301020,
+                  "name": "Media Agencies",
+                  "definition": "Companies that provide a wide range of marketing and public relations services."
+                },
+                {
+                  "id": 40301030,
+                  "name": "Publishing",
+                  "definition": "Companies that provide advertising and publishing services."
+                },
+                {
+                  "id": 40301035,
+                  "name": "Radio and TV Broadcasters",
+                  "definition": "Companies operating commercial TV stations and/or radio broadcasting."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4040,
+          "name": "Retailers",
+          "sectors": [
+            {
+              "id": 404010,
+              "name": "Retailers",
+              "subsectors": [
+                {
+                  "id": 40401010,
+                  "name": "Diversified Retailers",
+                  "definition": "Retail outlets and wholesalers offering a wide variety of products including both hard goods and soft goods."
+                },
+                {
+                  "id": 40401020,
+                  "name": "Apparel Retailers",
+                  "definition": "Retailers and wholesalers specialising mainly in clothing, shoes, sunglasses and other accessories."
+                },
+                {
+                  "id": 40401025,
+                  "name": "Home Improvement Retailers",
+                  "definition": "Retailers and wholesalers concentrating on the sale of home improvement products."
+                },
+                {
+                  "id": 40401030,
+                  "name": "Specialty Retailers",
+                  "definition": "Retailers and wholesalers concentrating on a single class of goods such as electronics, books, automotive parts."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4050,
+          "name": "Travel and Leisure",
+          "sectors": [
+            {
+              "id": 405010,
+              "name": "Travel and Leisure",
+              "subsectors": [
+                {
+                  "id": 40501010,
+                  "name": "Airlines",
+                  "definition": "Companies providing primarily passenger air transport. Excludes airports."
+                },
+                {
+                  "id": 40501015,
+                  "name": "Travel and Tourism",
+                  "definition": "Companies providing travel and tourism related services including travel agents, online travel reservation services."
+                },
+                {
+                  "id": 40501020,
+                  "name": "Casino and Gambling",
+                  "definition": "Providers of gambling and casino facilities including online casinos and racetracks."
+                },
+                {
+                  "id": 40501025,
+                  "name": "Hotels and Motels",
+                  "definition": "Operators and managers of hotels, motels, lodges, resorts, spas and campgrounds."
+                },
+                {
+                  "id": 40501030,
+                  "name": "Recreational Services",
+                  "definition": "Providers of leisure facilities and services including fitness centers, amusement parks, concerts and sports/e-sports event promotion."
+                },
+                {
+                  "id": 40501040,
+                  "name": "Restaurants and Bars",
+                  "definition": "Operators of restaurants, fast-food facilities, coffee shops and bars."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "Consumer Staples",
+      "supersectors": [
+        {
+          "id": 4510,
+          "name": "Food, Beverage and Tobacco",
+          "sectors": [
+            {
+              "id": 451010,
+              "name": "Beverages",
+              "subsectors": [
+                {
+                  "id": 45101010,
+                  "name": "Brewers",
+                  "definition": "Manufacturers and shippers of cider or malt products such as beer, ale and stout."
+                },
+                {
+                  "id": 45101015,
+                  "name": "Distillers and Vintners",
+                  "definition": "Producers, distillers, vintners, blenders and shippers of wine and spirits."
+                },
+                {
+                  "id": 45101020,
+                  "name": "Soft Drinks",
+                  "definition": "Manufacturers, bottlers and distributors of non-alcoholic beverages such as soda, fruit juices, tea."
+                }
+              ]
+            },
+            {
+              "id": 451020,
+              "name": "Food Producers",
+              "subsectors": [
+                {
+                  "id": 45102010,
+                  "name": "Farming, Fishing, Ranching and Plantations",
+                  "definition": "Companies that grow crops or raise livestock, operate fisheries or own nontobacco plantations."
+                },
+                {
+                  "id": 45102020,
+                  "name": "Food Products",
+                  "definition": "Food producers including meatpacking, snacks, fruits, vegetables, dairy products and frozen seafood."
+                },
+                {
+                  "id": 45102030,
+                  "name": "Fruit and Grain Processing",
+                  "definition": "Companies involved in value-added processes of agricultural products."
+                },
+                {
+                  "id": 45102035,
+                  "name": "Sugar",
+                  "definition": "Companies that grow, refine, process and distribute sugar."
+                }
+              ]
+            },
+            {
+              "id": 451030,
+              "name": "Tobacco",
+              "subsectors": [
+                {
+                  "id": 45103010,
+                  "name": "Tobacco",
+                  "definition": "Manufacturers and distributors of cigarettes, cigars and other tobacco products."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4520,
+          "name": "Personal Care, Drug and Grocery Stores",
+          "sectors": [
+            {
+              "id": 452010,
+              "name": "Personal Care, Drug and Grocery Stores",
+              "subsectors": [
+                {
+                  "id": 45201010,
+                  "name": "Food Retailers and Wholesalers",
+                  "definition": "Supermarkets, food-oriented convenience stores and food distributors."
+                },
+                {
+                  "id": 45201015,
+                  "name": "Drug Retailers",
+                  "definition": "Operators of pharmacies including wholesalers and distributors."
+                },
+                {
+                  "id": 45201020,
+                  "name": "Personal Products",
+                  "definition": "Makers and distributors of toiletries, personal-care and hygiene products."
+                },
+                {
+                  "id": 45201030,
+                  "name": "Nondurable Household Products",
+                  "definition": "Producers and distributors of pens, paper goods, batteries, light bulbs, tissues, toilet paper and cleaning products."
+                },
+                {
+                  "id": 45201040,
+                  "name": "Miscellaneous Consumer Staple Goods",
+                  "definition": "Consumer staples companies not classified in other subsectors."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "Industrials",
+      "supersectors": [
+        {
+          "id": 5010,
+          "name": "Construction and Materials",
+          "sectors": [
+            {
+              "id": 501010,
+              "name": "Construction and Materials",
+              "subsectors": [
+                {
+                  "id": 50101010,
+                  "name": "Construction",
+                  "definition": "Companies that provide construction and infrastructure development services to private and/or public-sector clients."
+                },
+                {
+                  "id": 50101015,
+                  "name": "Engineering and Contracting Services",
+                  "definition": "Companies that provide capital project planning and solutions."
+                },
+                {
+                  "id": 50101020,
+                  "name": "Building, Roofing/Wallboard and Plumbing",
+                  "definition": "Companies that design, manufacture, market and/or install non-climate control systems."
+                },
+                {
+                  "id": 50101025,
+                  "name": "Building: Climate Control",
+                  "definition": "Companies that design, manufacture, market and/or install air conditioning, heating and/or refrigeration systems."
+                },
+                {
+                  "id": 50101030,
+                  "name": "Cement",
+                  "definition": "Manufacturers and distributors of cement and cement-derived products."
+                },
+                {
+                  "id": 50101035,
+                  "name": "Building Materials: Other",
+                  "definition": "Companies that provide materials to building and construction industry excluding air-conditioning, cement, heating, plumbing, roofing and wall boards."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 5020,
+          "name": "Industrial Goods and Services",
+          "sectors": [
+            {
+              "id": 502010,
+              "name": "Aerospace and Defense",
+              "subsectors": [
+                {
+                  "id": 50201010,
+                  "name": "Aerospace",
+                  "definition": "Manufacturers, assemblers and distributors of aircraft and aircraft parts for commercial or private air transport."
+                },
+                {
+                  "id": 50201020,
+                  "name": "Defense",
+                  "definition": "Producers of components and equipment for the defense industry."
+                }
+              ]
+            },
+            {
+              "id": 502020,
+              "name": "Electronic and Electrical Equipment",
+              "subsectors": [
+                {
+                  "id": 50202010,
+                  "name": "Electrical Components",
+                  "definition": "Makers and distributors of basic electrical parts for finished products such as radios, televisions and other consumer electronics."
+                },
+                {
+                  "id": 50202020,
+                  "name": "Electronic Equipment: Control and Filter",
+                  "definition": "Companies primarily involved in providing mechanical and electronic security and/or filtration systems."
+                },
+                {
+                  "id": 50202025,
+                  "name": "Electronic Equipment: Gauges and Meters",
+                  "definition": "Companies that design, manufacture and market products used to measure electric, gas, water and other data."
+                },
+                {
+                  "id": 50202030,
+                  "name": "Electronic Equipment: Pollution Control",
+                  "definition": "Companies engaged in production of pollution control equipment and related services."
+                },
+                {
+                  "id": 50202040,
+                  "name": "Electronic Equipment: Other",
+                  "definition": "Companies that specialise in development and production of electrical devices/components marketed to business clients."
+                }
+              ]
+            },
+            {
+              "id": 502030,
+              "name": "General Industrials",
+              "subsectors": [
+                {
+                  "id": 50203000,
+                  "name": "Diversified Industrials",
+                  "definition": "Companies engaged in two or more industrial business activities, none of which is the dominant business line."
+                },
+                {
+                  "id": 50203010,
+                  "name": "Paints and Coatings",
+                  "definition": "Companies that manufacture and distribute paint, material coatings, and resins."
+                },
+                {
+                  "id": 50203015,
+                  "name": "Plastics",
+                  "definition": "Companies that manufacture and market plastic products or chemicals used to make plastic."
+                },
+                {
+                  "id": 50203020,
+                  "name": "Glass",
+                  "definition": "Companies that manufacture various structural glasses."
+                },
+                {
+                  "id": 50203030,
+                  "name": "Containers and Packaging",
+                  "definition": "Producers of packaging products and packaging related materials including cartons, plastic bottles, glass bottles, etc."
+                }
+              ]
+            },
+            {
+              "id": 502040,
+              "name": "Industrial Engineering",
+              "subsectors": [
+                {
+                  "id": 50204000,
+                  "name": "Machinery: Industrial",
+                  "definition": "Companies that design, develop, manufacture, sell, and support general industrial machines and parts."
+                },
+                {
+                  "id": 50204010,
+                  "name": "Machinery: Agricultural",
+                  "definition": "Manufacturers and distributors of a range of farming equipment."
+                },
+                {
+                  "id": 50204020,
+                  "name": "Machinery: Construction and Handling",
+                  "definition": "Manufacturers of large-size industrial equipment for construction and ports."
+                },
+                {
+                  "id": 50204030,
+                  "name": "Machinery: Engines",
+                  "definition": "Manufacturers and distributors of energy output devices and components including diesel and gas engines."
+                },
+                {
+                  "id": 50204040,
+                  "name": "Machinery: Tools",
+                  "definition": "Manufacturers and marketers of value-adding equipment for heavy industries."
+                },
+                {
+                  "id": 50204050,
+                  "name": "Machinery: Specialty",
+                  "definition": "Designers and manufacturers of specific types or groups of industrial machines and parts."
+                }
+              ]
+            },
+            {
+              "id": 502050,
+              "name": "Industrial Support Services",
+              "subsectors": [
+                {
+                  "id": 50205010,
+                  "name": "Industrial Suppliers",
+                  "definition": "Distributors and wholesalers of diversified products and equipment for commercial and industrial sectors."
+                },
+                {
+                  "id": 50205015,
+                  "name": "Transaction Processing Services",
+                  "definition": "Providers of computerised transaction processing services including global payment services."
+                },
+                {
+                  "id": 50205020,
+                  "name": "Professional Business Support Services",
+                  "definition": "Companies providing outsourced business operation services, consulting, corporate taxes and business decision tools."
+                },
+                {
+                  "id": 50205025,
+                  "name": "Business Training and Employment Agencies",
+                  "definition": "Providers of business/management training courses and employment services."
+                },
+                {
+                  "id": 50205030,
+                  "name": "Forms and Bulk Printing Services",
+                  "definition": "Providers of printed business products including forms, checks, labels and IDs."
+                },
+                {
+                  "id": 50205040,
+                  "name": "Security Services",
+                  "definition": "Companies that provide security services, install, service and monitor alarm and security systems."
+                }
+              ]
+            },
+            {
+              "id": 502060,
+              "name": "Industrial Transportation",
+              "subsectors": [
+                {
+                  "id": 50206010,
+                  "name": "Trucking",
+                  "definition": "Companies providing commercial trucking or mass public bus services."
+                },
+                {
+                  "id": 50206015,
+                  "name": "Commercial Vehicles and Parts",
+                  "definition": "Companies designing, manufacturing, and distributing light, medium and heavy-duty trucks and vans."
+                },
+                {
+                  "id": 50206020,
+                  "name": "Railroads",
+                  "definition": "Companies operating railway systems for transporting goods and mass public rail services."
+                },
+                {
+                  "id": 50206025,
+                  "name": "Railroad Equipment",
+                  "definition": "Manufacturers and suppliers of railroad supplies."
+                },
+                {
+                  "id": 50206030,
+                  "name": "Marine Transportation",
+                  "definition": "Providers of on-water transportation for commercial markets, such as container shipping. Includes shipbuilders."
+                },
+                {
+                  "id": 50206040,
+                  "name": "Delivery Services",
+                  "definition": "Operators of mail and package delivery services for commercial and consumer use."
+                },
+                {
+                  "id": 50206050,
+                  "name": "Commercial Vehicle-Equipment Leasing",
+                  "definition": "Companies that rent and lease equipment to commercial clients such as rails, tankers, freight cars, aviation assets."
+                },
+                {
+                  "id": 50206060,
+                  "name": "Transportation Services",
+                  "definition": "Companies providing services to the industrial transportation sector including airport and vehicle maintenance."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "name": "Basic Materials",
+      "supersectors": [
+        {
+          "id": 5510,
+          "name": "Basic Resources",
+          "sectors": [
+            {
+              "id": 551010,
+              "name": "Industrial Materials",
+              "subsectors": [
+                {
+                  "id": 55101000,
+                  "name": "Diversified Materials",
+                  "definition": "Companies involved in manufacturing a diversified range of materials."
+                },
+                {
+                  "id": 55101010,
+                  "name": "Forestry",
+                  "definition": "Owners and operators of timber tracts, forest tree nurseries and sawmills."
+                },
+                {
+                  "id": 55101015,
+                  "name": "Paper",
+                  "definition": "Manufacturers of various paper products including office paper, cardboard and newsprint."
+                },
+                {
+                  "id": 55101020,
+                  "name": "Textile Products",
+                  "definition": "Producers of various textile products such as cotton yarns, denims, and other fabrics."
+                }
+              ]
+            },
+            {
+              "id": 551020,
+              "name": "Industrial Metals and Mining",
+              "subsectors": [
+                {
+                  "id": 55102000,
+                  "name": "General Mining",
+                  "definition": "Companies engaged in the exploration, extraction or refining of minerals not defined elsewhere."
+                },
+                {
+                  "id": 55102010,
+                  "name": "Iron and Steel",
+                  "definition": "Companies mining iron ore and producing steel products."
+                },
+                {
+                  "id": 55102015,
+                  "name": "Metal Fabricating",
+                  "definition": "Manufacturers of fabricated metal components such as rings, hinges, springs."
+                },
+                {
+                  "id": 55102035,
+                  "name": "Aluminum",
+                  "definition": "Companies mining or processing bauxite or producing aluminum bars and rods."
+                },
+                {
+                  "id": 55102040,
+                  "name": "Copper",
+                  "definition": "Companies mining, extracting and distributing copper and related minerals."
+                },
+                {
+                  "id": 55102050,
+                  "name": "Nonferrous Metals",
+                  "definition": "Producers and traders of metals and primary metal products other than iron, aluminum and steel."
+                }
+              ]
+            },
+            {
+              "id": 551030,
+              "name": "Precious Metals and Mining",
+              "subsectors": [
+                {
+                  "id": 55103020,
+                  "name": "Diamonds and Gemstones",
+                  "definition": "Companies engaged in exploration for and production of diamonds and other gemstones."
+                },
+                {
+                  "id": 55103025,
+                  "name": "Gold Mining",
+                  "definition": "Prospectors for and extractors or refiners of gold-bearing ores."
+                },
+                {
+                  "id": 55103030,
+                  "name": "Platinum and Precious Metals",
+                  "definition": "Companies engaged in exploration and production of platinum, silver and other precious metals."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 5520,
+          "name": "Chemicals",
+          "sectors": [
+            {
+              "id": 552010,
+              "name": "Chemicals",
+              "subsectors": [
+                {
+                  "id": 55201000,
+                  "name": "Chemicals: Diversified",
+                  "definition": "Companies manufacturing a diversified range of industrial chemicals."
+                },
+                {
+                  "id": 55201010,
+                  "name": "Chemicals and Synthetic Fibers",
+                  "definition": "Companies manufacturing and distributing chemical fibers."
+                },
+                {
+                  "id": 55201015,
+                  "name": "Fertilisers",
+                  "definition": "Companies manufacturing and marketing nitrogen fertilisers and other agricultural chemicals."
+                },
+                {
+                  "id": 55201020,
+                  "name": "Specialty Chemicals",
+                  "definition": "Companies manufacturing and marketing specific types or groups of chemicals."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "name": "Energy",
+      "supersectors": [
+        {
+          "id": 6010,
+          "name": "Energy",
+          "sectors": [
+            {
+              "id": 601010,
+              "name": "Oil, Gas and Coal",
+              "subsectors": [
+                {
+                  "id": 60101000,
+                  "name": "Integrated Oil and Gas",
+                  "definition": "Companies engaged in petroleum extraction, transportation, refining and marketing."
+                },
+                {
+                  "id": 60101010,
+                  "name": "Oil: Crude Producers",
+                  "definition": "Companies engaged in exploration for and drilling, production, and supply of crude oil or natural gas on land."
+                },
+                {
+                  "id": 60101015,
+                  "name": "Offshore Drilling and Other Services",
+                  "definition": "Companies engaged in exploration for and drilling, production, and supply of crude oil or natural gas offshore."
+                },
+                {
+                  "id": 60101020,
+                  "name": "Oil Refining and Marketing",
+                  "definition": "Companies primarily engaged in the refining and marketing of petroleum products."
+                },
+                {
+                  "id": 60101030,
+                  "name": "Oil Equipment and Services",
+                  "definition": "Suppliers of equipment and services to oil or gas fields and offshore platforms."
+                },
+                {
+                  "id": 60101035,
+                  "name": "Pipelines",
+                  "definition": "Operators of pipelines carrying oil, gas or other forms of fuel."
+                },
+                {
+                  "id": 60101040,
+                  "name": "Coal",
+                  "definition": "Companies that mine, process and market coal."
+                }
+              ]
+            },
+            {
+              "id": 601020,
+              "name": "Alternative Energy",
+              "subsectors": [
+                {
+                  "id": 60102010,
+                  "name": "Alternative Fuels",
+                  "definition": "Companies producing alternative fuels such as ethanol, methanol, hydrogen and bio-fuels."
+                },
+                {
+                  "id": 60102020,
+                  "name": "Renewable Energy Equipment",
+                  "definition": "Companies developing or manufacturing renewable energy equipment using solar, wind, tidal, geothermal, hydro and wave sources."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "name": "Utilities",
+      "supersectors": [
+        {
+          "id": 6510,
+          "name": "Utilities",
+          "sectors": [
+            {
+              "id": 651010,
+              "name": "Electricity",
+              "subsectors": [
+                {
+                  "id": 65101010,
+                  "name": "Alternative Electricity",
+                  "definition": "Companies generating and distributing electricity from renewable sources such as solar, water, wind and geothermal."
+                },
+                {
+                  "id": 65101015,
+                  "name": "Conventional Electricity",
+                  "definition": "Companies generating and distributing electricity through fossil fuels and nuclear energy."
+                }
+              ]
+            },
+            {
+              "id": 651020,
+              "name": "Gas, Water and Multi-utilities",
+              "subsectors": [
+                {
+                  "id": 65102000,
+                  "name": "Multi-Utilities",
+                  "definition": "Companies that engage in multiple utilities none of which individually generates 50% or more of revenue."
+                },
+                {
+                  "id": 65102020,
+                  "name": "Gas Distribution",
+                  "definition": "Distributors of gas to end users."
+                },
+                {
+                  "id": 65102030,
+                  "name": "Water",
+                  "definition": "Companies providing water to end users, including water treatment plants."
+                }
+              ]
+            },
+            {
+              "id": 651030,
+              "name": "Waste and Disposal Services",
+              "subsectors": [
+                {
+                  "id": 65103035,
+                  "name": "Waste and Disposal Services",
+                  "definition": "Providers of pollution control and environmental services for the management, recovery and disposal of solid and hazardous waste materials."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

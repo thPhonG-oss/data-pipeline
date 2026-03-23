@@ -20,12 +20,19 @@ _SQL_MIN_DATE = date(1753, 1, 1)
 
 
 def _lookup_icb_code(icb_name4: str | None) -> str | None:
-    """Tra cứu icb_code theo icb_name ở level 4 từ bảng icb_industries."""
+    """Tra cứu icb_code theo icb_name ở level 4 từ bảng icb_industries.
+
+    Thử khớp tên tiếng Việt (icb_name) trước, fallback sang tên tiếng Anh (en_icb_name).
+    """
     if not icb_name4:
         return None
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT icb_code FROM icb_industries WHERE level = 4 AND icb_name = :name LIMIT 1"),
+            text("""
+                SELECT icb_code FROM icb_industries
+                WHERE level = 4 AND (icb_name = :name OR en_icb_name = :name)
+                LIMIT 1
+            """),
             {"name": icb_name4},
         ).fetchone()
     return row[0] if row else None
