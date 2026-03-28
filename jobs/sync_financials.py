@@ -3,6 +3,7 @@ import argparse
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import pandas as pd
 from sqlalchemy import text
 
 from config.constants import CONFLICT_KEYS, FINANCIAL_REPORT_TYPES, JOB_SYNC_FINANCIALS
@@ -10,19 +11,12 @@ from config.settings import settings
 from db.connection import engine
 from etl.extractors.finance import FinanceExtractor
 from etl.loaders.postgres import PostgresLoader
-from etl.transformers.finance import FinanceTransformer
+from etl.transformers.finance_factory import FinanceParserFactory
 from etl.validators.cross_source import FinanceCrossValidator
 from utils.logger import logger
 
-# Chỉ validate các bảng này (không validate ratio)
+# Chỉ validate 3 loại BCTC chính (không validate ratio)
 _VALIDATE_REPORT_TYPES = {"balance_sheet", "income_statement", "cash_flow"}
-
-_TABLE_MAP = {
-    "balance_sheet":    "balance_sheets",
-    "income_statement": "income_statements",
-    "cash_flow":        "cash_flows",
-    "ratio":            "financial_ratios",
-}
 
 
 def _get_listed_symbols() -> list[str]:
@@ -34,15 +28,26 @@ def _get_listed_symbols() -> list[str]:
     return [r[0] for r in rows]
 
 
+def _get_icb_codes(symbols: list[str]) -> dict[str, str | None]:
+    """Fetch icb_code cho tất cả symbols trong một query duy nhất."""
+    if not symbols:
+        return {}
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT symbol, icb_code FROM companies WHERE symbol = ANY(:syms)"),
+            {"syms": symbols},
+        ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
 def _run_one(
     symbol: str,
     report_type: str,
+    icb_code: str | None,
     extractor: FinanceExtractor,
-    transformer: FinanceTransformer,
     loader: PostgresLoader,
 ) -> dict:
     """Chạy E→T→L cho một symbol + report_type. Trả về result dict."""
-    table = _TABLE_MAP[report_type]
     log_id = loader.load_log(
         job_name=JOB_SYNC_FINANCIALS, symbol=symbol, status="running"
     )
@@ -50,15 +55,31 @@ def _run_one(
         df_raw = extractor.extract(symbol, report_type=report_type)
         time.sleep(settings.request_delay)
 
-        df = transformer.transform(df_raw, symbol, report_type=report_type)
-        if df.empty:
+        if df_raw.empty:
             loader.load_log(
                 job_name=JOB_SYNC_FINANCIALS, symbol=symbol,
                 status="skipped", log_id=log_id,
             )
             return {"symbol": symbol, "report_type": report_type, "status": "skipped", "rows": 0}
 
-        rows = loader.load(df, table, CONFLICT_KEYS[table])
+        # Route đến parser phù hợp theo ICB Level-1
+        parser = FinanceParserFactory.get_parser(icb_code, report_type)
+        payloads = parser.parse(df_raw, symbol)
+
+        if not payloads:
+            loader.load_log(
+                job_name=JOB_SYNC_FINANCIALS, symbol=symbol,
+                status="skipped", log_id=log_id,
+            )
+            return {"symbol": symbol, "report_type": report_type, "status": "skipped", "rows": 0}
+
+        df = pd.DataFrame(payloads)
+        rows = loader.load(
+            df,
+            "financial_reports",
+            CONFLICT_KEYS["financial_reports"],
+            jsonb_merge_columns=["raw_details"],
+        )
         loader.load_log(
             job_name=JOB_SYNC_FINANCIALS, symbol=symbol,
             status="success", records_fetched=len(df),
@@ -81,38 +102,37 @@ def run(
     max_workers: int | None = None,
 ) -> dict:
     """
-    Đồng bộ báo cáo tài chính vào PostgreSQL.
+    Đồng bộ báo cáo tài chính vào bảng financial_reports.
 
     Args:
         symbols:      Danh sách mã cần sync. Mặc định: tất cả mã đang niêm yết từ DB.
-        report_types: Loại báo cáo cần sync. Mặc định: tất cả 4 loại.
+        report_types: Loại báo cáo cần sync. Mặc định: tất cả 3 loại (BS/IS/CF).
         max_workers:  Số luồng song song. Mặc định: settings.max_workers.
     """
-    symbols = symbols or _get_listed_symbols()
+    symbols     = symbols or _get_listed_symbols()
     report_types = report_types or FINANCIAL_REPORT_TYPES
     max_workers = max_workers or settings.max_workers
 
+    # Fetch icb_code một lần cho tất cả symbols để định tuyến parser
+    icb_map = _get_icb_codes(symbols)
+
     logger.info(
-        f"[sync_financials] Bắt đầu: {len(symbols)} mã × {len(report_types)} loại báo cáo "
-        f"({max_workers} luồng)."
+        f"[sync_financials] Bắt đầu: {len(symbols)} mã × {len(report_types)} loại "
+        f"({max_workers} luồng) → financial_reports."
     )
 
-    extractor  = FinanceExtractor(source=settings.vnstock_source)
-    transformer = FinanceTransformer()
-    loader     = PostgresLoader()
-    validator  = FinanceCrossValidator()
+    extractor = FinanceExtractor(source=settings.vnstock_source)
+    loader    = PostgresLoader()
+    validator = FinanceCrossValidator()
 
     totals = {"success": 0, "failed": 0, "skipped": 0, "rows": 0, "flags": 0}
-
-    # Tạo danh sách tất cả tasks: (symbol, report_type)
-    tasks = [(sym, rt) for sym in symbols for rt in report_types]
+    tasks  = [(sym, rt) for sym in symbols for rt in report_types]
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
-            pool.submit(_run_one, sym, rt, extractor, transformer, loader): (sym, rt)
+            pool.submit(_run_one, sym, rt, icb_map.get(sym), extractor, loader): (sym, rt)
             for sym, rt in tasks
         }
-        # Theo dõi symbol nào đã sync xong đủ các report cần validate
         sym_report_done: dict[str, set] = {sym: set() for sym in symbols}
 
         for future in as_completed(futures):
@@ -125,9 +145,9 @@ def run(
             if result["status"] == "success" and rt in _VALIDATE_REPORT_TYPES:
                 sym_report_done[sym].add(rt)
 
-            # Khi đủ 3 loại BCTC cần validate → chạy cross-validate
-            if sym_report_done[sym] >= _VALIDATE_REPORT_TYPES:
-                sym_report_done[sym] = set()   # Reset tránh validate lại
+            # Khi đủ 3 loại BCTC → chạy cross-validate với KBS
+            if sym_report_done[sym] == _VALIDATE_REPORT_TYPES:
+                sym_report_done[sym] = set()
                 try:
                     flags = validator.validate_symbol(sym)
                     totals["flags"] += flags
@@ -152,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--report-types", nargs="+", default=None,
         choices=FINANCIAL_REPORT_TYPES,
-        help="Loại báo cáo. Mặc định: tất cả 4 loại.",
+        help="Loại báo cáo. Mặc định: tất cả 3 loại (balance_sheet, income_statement, cash_flow).",
     )
     parser.add_argument(
         "--workers", type=int, default=None,

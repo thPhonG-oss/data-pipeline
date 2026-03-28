@@ -1,45 +1,25 @@
-# Kế hoạch nâng cấp Real-time Pipeline
+# Real-time Pipeline — Tài liệu kỹ thuật
 
-> Cập nhật: 2026-03-21
-> Trạng thái: Đang thiết kế — chưa implement
+> Cập nhật: 2026-03-28
+> Trạng thái: **✅ Hoàn thành (RT-1 đến RT-4)**
 > Tác giả: Data Engineering Team
 
 ---
 
-## 1. Bối cảnh và mục tiêu
+## 1. Tổng quan
 
-### Hiện trạng
+Pipeline real-time thu thập nến OHLC (1 phút, 5 phút) từ **DNSE MDDS** trong giờ giao dịch và lưu vào PostgreSQL bảng `price_intraday`, phục vụ Java Backend API và React Frontend dashboard.
 
-Pipeline hiện tại là **batch pipeline thuần túy**:
+### So sánh với batch pipeline
 
-| Job | Lịch chạy | Dữ liệu |
+| | Batch Pipeline | Real-time Pipeline |
 |---|---|---|
-| sync_listing | CN 01:00 | Danh mục mã, ngành ICB |
-| sync_financials | 1 & 15 hàng tháng 03:00 | BCTC (balance sheet, income, cash flow, ratio) |
-| sync_company | T2 02:00 | Cổ đông, ban lãnh đạo, công ty con, sự kiện |
-| sync_ratios | Hàng ngày 18:30 | Ratio summary sau đóng cửa |
-| sync_prices | T2–T6 19:00 | Giá OHLCV ngày (EOD) |
-
-Dữ liệu giá chỉ có **1 nến/ngày**, không có intraday. Backend/Frontend không thể phục vụ các use case cần dữ liệu trong giờ giao dịch.
-
-### Mục tiêu sau nâng cấp
-
-1. **Lưu intraday OHLC** (nến 1 phút, 5 phút) vào PostgreSQL trong giờ giao dịch.
-2. **Dữ liệu sẵn sàng real-time** cho Java SpringBoot Backend API → React Frontend dashboard.
-3. **Scalable**: pipeline có thể mở rộng số symbol và timeframe mà không cần redesign.
-4. **Batch pipeline không bị ảnh hưởng**: Các jobs hiện tại tiếp tục chạy bình thường.
-
-### Scope rõ ràng
-
-```
-Pipeline (Python)         Backend (Java)         Frontend (React)
-─────────────────         ──────────────         ────────────────
-Thu thập dữ liệu          REST API               Dashboard
-Xử lý / Transform         Query PostgreSQL        Charts
-Lưu vào PostgreSQL        Serve data             Alerts / UI
-```
-
-Pipeline **không** build dashboard, **không** gửi alert trực tiếp đến user — đó là trách nhiệm của Backend/Frontend.
+| Trigger | APScheduler cron | Liên tục (streaming) |
+| Dữ liệu | EOD OHLCV (1 nến/ngày) | Intraday 1m & 5m |
+| Nguồn | KBS REST (via vnstock) | DNSE MDDS (MQTT/WSS) |
+| Bảng đích | `price_history` | `price_intraday` |
+| Active | 24/7 (cron) | T2–T6, 07:00–15:15 |
+| Xung đột | Không | Không (bảng tách biệt) |
 
 ---
 
@@ -54,62 +34,52 @@ DNSE MDDS Broker
   datafeed-lts-krx.dnse.com.vn:443
          │
          │ MQTT v5 over WebSocket Secure (WSS)
-         │ Auth: JWT + investorId
+         │ Auth: JWT token + investorId
          ▼
 ┌─────────────────────────────────┐
-│        MQTT Subscriber           │   realtime/subscriber.py
-│                                  │   • 1 process duy nhất
-│  • Auth flow + JWT auto-refresh  │   • Subscribe OHLC 1m & 5m
-│  • Subscribe watchlist symbols   │   • Reconnect tự động khi mất kết nối
-│  • Deserialize JSON payload      │   • Chỉ chạy trong giờ giao dịch
+│        MQTTSubscriber            │   realtime/subscriber.py
+│                                  │   • JWT auto-refresh mỗi 7h
+│  • Auth DNSE → JWT + investorId  │   • Subscribe OHLC 1m & 5m
+│  • Subscribe watchlist symbols   │   • Reconnect với backoff
+│  • Deserialize JSON payload      │   • Active T2–T6, 07:00–15:15
 └────────────────┬────────────────┘
                  │ XADD (Redis Streams)
                  │ stream:ohlc:1m
                  │ stream:ohlc:5m
                  ▼
 ┌─────────────────────────────────┐
-│          Redis Streams           │   Infrastructure mới
-│                                  │   • Retention: 48h
-│  stream:ohlc:1m                  │   • Consumer groups
-│  stream:ohlc:5m                  │   • Pending messages list
+│          Redis Streams           │   stockapp_redis (Docker)
+│                                  │   • Retention: maxlen 500,000
+│  stream:ohlc:1m                  │   • AOF persistent
+│  stream:ohlc:5m                  │   • Consumer groups
 └────────────────┬────────────────┘
-                 │ XREADGROUP (Consumer Group)
-                 │ Batch đọc mỗi 5 giây
+                 │ XREADGROUP (Consumer Group: ohlc-processors)
+                 │ Batch 100 messages, block 5s
                  ▼
 ┌─────────────────────────────────┐
-│       Stream Processor           │   realtime/processor.py
-│                                  │   • 1-N worker processes
-│  • Validate & transform          │   • Scale ngang độc lập
-│  • Deduplicate                   │   • ACK sau khi upsert thành công
+│       StreamProcessor            │   realtime/processor.py
+│                                  │   • Daemon thread (24/7)
+│  • _validate_message()           │   • ACK sau upsert thành công
+│  • _transform_message()          │   • XAUTOCLAIM pending > 30m
 │  • Batch upsert PostgreSQL       │
 └────────────────┬────────────────┘
-                 │ Upsert (INSERT ... ON CONFLICT DO UPDATE)
+                 │ INSERT ... ON CONFLICT DO UPDATE
                  ▼
 ┌─────────────────────────────────┐
-│          PostgreSQL              │   DB hiện tại (stockapp)
+│          PostgreSQL              │   stockapp_db (TimescaleDB)
 │                                  │
-│  price_intraday (bảng mới)      │   ← Java SpringBoot đọc
-│  price_history  (batch EOD)     │   ← Giữ nguyên
+│  price_intraday (hypertable)    │   ← Java SpringBoot Backend đọc
+│  price_history  (batch EOD)     │   ← Giữ nguyên, không thay đổi
 └─────────────────────────────────┘
 ```
 
-### Tại sao Redis Streams?
-
-| Tiêu chí | In-process Queue | Redis Streams (chọn) |
-|---|---|---|
-| Bền vững khi crash | ❌ Mất hết | ✅ Persist trên disk |
-| Scale workers | ❌ Không | ✅ Consumer groups |
-| Monitor lag | ❌ Không | ✅ XPENDING, XLEN |
-| Replay messages | ❌ Không | ✅ Đọc lại từ ID bất kỳ |
-| Cần thêm service | Không | Redis (lightweight) |
-
 ---
 
-## 3. Các thành phần mới
+## 3. Các thành phần đã implement
 
-### 3.1 MQTT Subscriber (`realtime/subscriber.py`)
+### 3.1 `realtime/auth.py` — `DNSEAuthManager`
 
-**Trách nhiệm duy nhất:** Kết nối DNSE MDDS → nhận OHLC messages → push vào Redis Streams.
+Quản lý JWT token và investorId để xác thực MQTT.
 
 **Auth flow (2 bước):**
 ```
@@ -119,8 +89,54 @@ POST https://api.dnse.com.vn/user-service/api/auth
 
 GET https://api.dnse.com.vn/user-service/api/me
   header: Authorization: Bearer <token>
-  → { investorId: 123456, ... }  # Dùng làm MQTT username
+  → { investorId: 1002161780 }  # Dùng làm MQTT username
 ```
+
+**API:**
+```python
+auth = DNSEAuthManager(username=..., password=...)
+token       = auth.get_token()       # str JWT, tự refresh khi < 1h còn lại
+investor_id = auth.get_investor_id() # str, dùng làm MQTT username
+auth.invalidate()                    # Buộc refresh (gọi sau MQTT auth fail)
+```
+
+**Token lifecycle:** TTL 8h, refresh khi còn < 1h (tức là mỗi 7h).
+
+---
+
+### 3.2 `realtime/watchlist.py` — `WatchlistManager`
+
+Quản lý danh sách symbol cần subscribe. Ưu tiên giảm dần:
+
+1. `REALTIME_WATCHLIST=HPG,VCB,FPT,...` trong `.env`
+2. Query DB: `SELECT symbol FROM companies WHERE status='listed' AND index_code LIKE '%VN30%'`
+3. Hardcode fallback: 30 mã VN30 hiện tại
+
+```python
+wm = WatchlistManager(watchlist_str=settings.realtime_watchlist)
+symbols = wm.get_symbols()  # list[str], sorted, unique, uppercase
+```
+
+---
+
+### 3.3 `realtime/session_guard.py` — `is_trading_hours()`
+
+```python
+def is_trading_hours(now: datetime | None = None) -> bool:
+    """
+    True nếu:
+      - Thứ 2 → Thứ 6 (weekday 0–4)
+      - 07:00 ≤ now ≤ 15:10 (Asia/Ho_Chi_Minh)
+    """
+```
+
+Dùng để kiểm tra trước khi khởi động subscriber trong `__main__`.
+
+---
+
+### 3.4 `realtime/subscriber.py` — `MQTTSubscriber`
+
+Kết nối DNSE MDDS, nhận OHLC candle, push vào Redis Streams.
 
 **MQTT connection:**
 ```
@@ -128,9 +144,9 @@ Broker:    datafeed-lts-krx.dnse.com.vn:443
 Protocol:  MQTT v5 over WebSocket Secure
 Path:      /wss
 SSL:       tls_insecure_set(True)  # self-signed cert
-Username:  investorId (số nguyên)
+Username:  investorId (str)
 Password:  JWT token
-ClientID:  uuid4()  # unique, tránh conflict
+ClientID:  dnse-ohlc-sub-{uuid4()[:8]}
 Keepalive: 1200s (20 phút)
 ```
 
@@ -140,473 +156,396 @@ plaintext/quotes/krx/mdds/v2/ohlc/stock/1/{symbol}   # nến 1 phút
 plaintext/quotes/krx/mdds/v2/ohlc/stock/5/{symbol}   # nến 5 phút
 ```
 
-**JWT auto-refresh:**
-- Token hết hạn sau 8h — subscriber phải tự refresh
-- Lịch refresh: mỗi 7h (buffer 1h)
-- Sau khi lấy token mới: cập nhật MQTT credentials + reconnect
-
-**Xử lý reconnect:**
-- `on_disconnect` callback: log + trigger reconnect với backoff (1s, 5s, 30s, 5m)
-- Sau reconnect: re-subscribe tất cả topics
-
-**Push vào Redis:**
+**Message → Redis:**
 ```python
 redis.xadd(
-    f"stream:ohlc:{resolution}m",   # stream:ohlc:1m hoặc stream:ohlc:5m
+    "stream:ohlc:1m",   # hoặc stream:ohlc:5m
     {
-        "symbol":     "HPG",
-        "time":       "2026-03-21T09:01:00+07:00",
-        "open":       20780,          # VND nguyên
-        "high":       20900,
-        "low":        20750,
-        "close":      20850,
-        "volume":     1234567,
-        "resolution": "1",
-        "received_at": "<unix_ms>",  # để monitor latency
+        "symbol":      "HPG",
+        "time":        "2026-03-28T09:01:00+07:00",
+        "open":        "25000",      # VND nguyên, stringified
+        "high":        "25500",
+        "low":         "24800",
+        "close":       "25200",
+        "volume":      "150000",
+        "resolution":  "1",
+        "received_at": "<unix_ms>",  # latency monitoring
     },
-    maxlen=500000,   # giới hạn kích thước stream (~48h data)
+    maxlen=500_000,   # ~48h data
 )
 ```
 
+**Reconnect backoff:** 1s → 5s → 30s → 300s
+
+**JWT auto-refresh:** Thread riêng, chạy mỗi 7h, reconnect MQTT sau khi lấy token mới.
+
 ---
 
-### 3.2 Stream Processor (`realtime/processor.py`)
+### 3.5 `realtime/processor.py` — `StreamProcessor`
 
-**Trách nhiệm:** Đọc từ Redis Streams → validate/transform → batch upsert PostgreSQL.
+Đọc Redis Streams, validate, transform, upsert vào `price_intraday`.
 
-**Consumer group pattern:**
+**Consumer group:**
 ```
-Group name:   ohlc-processors
-Consumer:     worker-{hostname}-{pid}   # unique per worker
-Read count:   100 messages mỗi lần
-Block timeout: 5000ms (5s)
+Group:    ohlc-processors
+Consumer: worker-{hostname}-{pid}   # unique per worker
+Streams:  stream:ohlc:1m, stream:ohlc:5m
+Batch:    100 messages
+Block:    5000ms
 ```
 
 **Xử lý một batch:**
-1. `XREADGROUP GROUP ohlc-processors worker-X COUNT 100 BLOCK 5000 STREAMS stream:ohlc:1m >`
-2. Validate: kiểm tra required fields, kiểu dữ liệu
-3. Deduplicate: theo `(symbol, time, resolution)` trước khi upsert
-4. Batch upsert vào `price_intraday`
-5. `XACK stream:ohlc:1m ohlc-processors <message_ids>` sau khi upsert thành công
+1. `XREADGROUP ... COUNT 100 BLOCK 5000` → nhận tối đa 100 messages
+2. `_validate_message()` — kiểm tra required fields + resolution hợp lệ (1 hoặc 5)
+3. `_transform_message()` — cast string → int/datetime, thêm `source="dnse_mdds"`
+4. `PostgresLoader.load()` → upsert `price_intraday`
+5. `XACK` → chỉ ACK sau khi upsert thành công (nếu DB lỗi → không ACK → retry)
 
-**Pending messages (không bị mất khi crash):**
-- Khi worker crash giữa chừng: messages ở trạng thái "pending" trong Redis
-- Worker mới khởi động: claim pending messages cũ qua `XAUTOCLAIM`
+**Pending messages (crash recovery):**
+- Messages không ACK sau 30 phút → `XAUTOCLAIM` → worker hiện tại claim lại và retry
 
-**Scale:** Chạy thêm worker process là đủ — Redis phân phối tự động qua consumer group.
-
----
-
-### 3.3 JWT Token Manager (`realtime/auth.py`)
-
-Module riêng xử lý auth flow, tách khỏi MQTT logic:
-
+**Pure functions (testable):**
 ```python
-class DNSEAuthManager:
-    def get_token(self) -> str       # Lấy/refresh JWT
-    def get_investor_id(self) -> str # Lấy investorId
-    def is_token_valid(self) -> bool # Còn hơn 1h mới hết hạn?
+_validate_message(msg: dict) -> bool
+_transform_message(msg: dict) -> dict  # Input: all strings; Output: DB row dict
 ```
 
 ---
 
-### 3.4 Watchlist Manager (`realtime/watchlist.py`)
-
-Quản lý danh sách symbol cần subscribe. Mặc định: VN30 + symbols tuỳ chỉnh.
-
-**Nguồn watchlist (ưu tiên giảm dần):**
-1. Environment variable `REALTIME_WATCHLIST=HPG,VCB,FPT,...`
-2. Query DB: `SELECT symbol FROM companies WHERE index_membership = 'VN30'`
-3. Fallback hardcode: 30 mã VN30 hiện tại
-
-**Dynamic reload:** Hỗ trợ reload watchlist không cần restart subscriber (SIGHUP).
-
----
-
-### 3.5 Session Guard (`realtime/session_guard.py`)
-
-Subscriber chỉ cần hoạt động trong giờ giao dịch. Session guard quản lý vòng đời:
-
-```
-07:00  → Khởi động subscriber, kết nối MQTT
-08:45  → Subscribe topics (trước ATO 15 phút)
-09:00  → ATO bắt đầu, nhận data
-11:30  → Nghỉ trưa HNX (optional: unsubscribe bớt nếu cần)
-13:00  → Tiếp tục
-14:45  → ATC
-15:05  → Unsubscribe topics
-15:10  → Đóng MQTT connection
-```
-
-Subscriber **không chạy 24/7** — chỉ active trong giờ giao dịch T2–T6.
-Ngoài giờ: process idle hoặc tắt hẳn (cron start/stop).
-
----
-
-## 4. Data Model — Bảng mới
-
-### 4.1 `price_intraday`
+## 4. Schema bảng `price_intraday`
 
 ```sql
-CREATE TABLE IF NOT EXISTS price_intraday (
-    id          BIGSERIAL    PRIMARY KEY,
-    symbol      VARCHAR(10)  NOT NULL
-                CONSTRAINT fk_pi_symbol REFERENCES companies(symbol),
-    time        TIMESTAMPTZ  NOT NULL,              -- Thời điểm bắt đầu nến (có timezone)
-    resolution  SMALLINT     NOT NULL,              -- Timeframe: 1 hoặc 5 (phút)
-    open        INTEGER      NOT NULL,              -- VND nguyên
-    high        INTEGER      NOT NULL,
-    low         INTEGER      NOT NULL,
-    close       INTEGER      NOT NULL,
+CREATE TABLE price_intraday (
+    symbol      VARCHAR(10)   NOT NULL REFERENCES companies(symbol),
+    time        TIMESTAMPTZ   NOT NULL,   -- Thời điểm bắt đầu nến (Asia/Ho_Chi_Minh)
+    resolution  SMALLINT      NOT NULL,   -- 1 = nến 1 phút, 5 = nến 5 phút
+    open        INTEGER       NOT NULL,   -- VND nguyên
+    high        INTEGER       NOT NULL,
+    low         INTEGER       NOT NULL,
+    close       INTEGER       NOT NULL,
     volume      BIGINT,
-    source      VARCHAR(20)  DEFAULT 'dnse_mdds',
-    fetched_at  TIMESTAMPTZ  DEFAULT NOW(),
+    source      VARCHAR(20)   DEFAULT 'dnse_mdds',
+    fetched_at  TIMESTAMPTZ   DEFAULT NOW(),
 
-    CONSTRAINT uq_price_intraday UNIQUE (symbol, time, resolution)
+    PRIMARY KEY (time, symbol, resolution)
 );
-
--- Index cho query pattern phổ biến nhất: symbol + resolution + time range
-CREATE INDEX idx_pi_sym_res_time
-    ON price_intraday(symbol, resolution, time DESC);
-
--- Partial index cho query intraday hôm nay
-CREATE INDEX idx_pi_today
-    ON price_intraday(symbol, resolution, time DESC)
-    WHERE time >= CURRENT_DATE;
 ```
+
+**Indexes:**
+```sql
+idx_pi_sym_res_time  ON price_intraday(symbol, resolution, time DESC)
+idx_pi_time          ON price_intraday(time DESC)
+```
+
+**TimescaleDB hypertable:**
+- Partition by `time`, chunk interval 1 tuần
+- Retention: 180 ngày (tự động xóa data cũ)
+- Compression: sau 7 ngày (lossless, columnar)
 
 **Lưu ý thiết kế:**
-- `time` lưu `TIMESTAMPTZ` (có timezone) — luôn dùng `Asia/Ho_Chi_Minh` khi insert
-- `resolution` là số nguyên (1, 5) thay vì string cho dễ sort/filter
-- Tách hoàn toàn khỏi `price_history` (EOD) để không ảnh hưởng batch pipeline
-- Giá lưu dưới dạng `INTEGER` VND nguyên (DNSE MDDS trả về VND nguyên — khác KBS REST trả về nghìn VND)
+- `time` lưu `TIMESTAMPTZ` — luôn insert với timezone `Asia/Ho_Chi_Minh`
+- Giá là `INTEGER` VND nguyên (DNSE MDDS trả về VND nguyên — khác KBS REST trả về nghìn VND)
+- Tách hoàn toàn khỏi `price_history` (EOD)
 
-### 4.2 Retention policy
+---
 
-| Bảng | Giữ bao lâu | Lý do |
-|---|---|---|
-| `price_intraday` (1m) | 30 ngày | Data lớn, ít dùng sau 1 tháng |
-| `price_intraday` (5m) | 180 ngày | Vừa đủ cho phân tích kỹ thuật |
-| `price_history` (EOD) | Vĩnh viễn | Không đổi |
+## 5. Tích hợp với `python main.py schedule`
 
-Cleanup job chạy hàng tuần:
-```sql
-DELETE FROM price_intraday
-WHERE resolution = 1 AND time < NOW() - INTERVAL '30 days';
-
-DELETE FROM price_intraday
-WHERE resolution = 5 AND time < NOW() - INTERVAL '180 days';
-```
-
-### 4.3 Migration file
+Từ 2026-03-28, real-time pipeline được tích hợp hoàn toàn vào `python main.py schedule`. Không cần chạy tay nữa.
 
 ```
-db/migrations/007_price_intraday.sql   ← tạo bảng + indexes
+python main.py schedule
+       │
+       ├─ [Boot ngay] StreamProcessor khởi động (daemon thread, 24/7)
+       │   └─ Liên tục đọc Redis → upsert price_intraday
+       │
+       ├─ [07:00 T2–T6] APScheduler → _start_realtime_subscriber()
+       │   └─ MQTTSubscriber chạy trong thread riêng
+       │      → Kết nối MQTT, subscribe VN30 × 2 timeframes
+       │
+       └─ [15:15 T2–T6] APScheduler → _stop_realtime_subscriber()
+           └─ Ngắt kết nối MQTT, subscriber dừng
+```
+
+**Feature flag:** Set `REALTIME_ENABLED=false` trong `.env` để tắt hoàn toàn realtime pipeline (ví dụ: môi trường dev không có DNSE credentials).
+
+---
+
+## 6. Cách chạy
+
+### Tích hợp (khuyến nghị)
+```bash
+python main.py schedule   # Batch + realtime pipeline cùng lúc
+```
+
+### Standalone (debug / test)
+```bash
+# Terminal 1
+python -m realtime.processor
+
+# Terminal 2 (chỉ active trong giờ giao dịch nếu dùng __main__)
+python -m realtime.subscriber
+
+# Windows batch scripts
+run_realtime_processor.bat
+run_realtime_subscriber.bat
+```
+
+### Docker Compose
+```bash
+docker compose up -d                    # Toàn bộ stack
+docker compose up -d realtime-subscriber realtime-processor  # Chỉ realtime
+docker compose logs -f realtime-subscriber
+docker compose logs -f realtime-processor
 ```
 
 ---
 
-## 5. Tích hợp với pipeline hiện tại
-
-### Batch pipeline — không thay đổi
-
-```
-sync_listing     (CN 01:00)    → companies, icb_industries
-sync_financials  (1&15 03:00)  → balance_sheets, income_statements, cash_flows, financial_ratios
-sync_company     (T2 02:00)    → shareholders, officers, subsidiaries, corporate_events
-sync_ratios      (hàng ngày 18:30) → ratio_summary
-sync_prices      (T2–T6 19:00) → price_history (EOD, 1 nến/ngày)
-```
-
-### Real-time pipeline — chạy song song
-
-```
-realtime/subscriber.py  → chạy độc lập (process riêng, không phải APScheduler)
-realtime/processor.py   → chạy độc lập (1-N processes)
-```
-
-**Không có xung đột dữ liệu:** `price_history` (EOD) và `price_intraday` (intraday) là 2 bảng tách biệt hoàn toàn.
-
-### Quan hệ giữa EOD và Intraday
-
-Nến EOD (từ `sync_prices`) và nến intraday (từ real-time) **độc lập nhau**:
-- EOD lấy từ KBS REST sau 19:00 — giá chính thức sau đóng cửa
-- Intraday từ DNSE MDDS live — giá real-time trong ngày
-- Backend có thể merge 2 nguồn khi cần (e.g., historical chart + intraday overlay)
-
----
-
-## 6. Cấu trúc thư mục mới
-
-```
-data-pipeline/
-├── realtime/                       ← Module mới hoàn toàn
-│   ├── __init__.py
-│   ├── auth.py                     # DNSEAuthManager — JWT flow
-│   ├── subscriber.py               # MQTT subscriber → Redis XADD
-│   ├── processor.py                # Redis XREADGROUP → PostgreSQL upsert
-│   ├── watchlist.py                # Quản lý danh sách symbol
-│   └── session_guard.py            # Kiểm soát giờ giao dịch
-│
-├── db/migrations/
-│   └── 007_price_intraday.sql      ← Migration mới
-│
-├── config/
-│   ├── settings.py                 ← Thêm redis_url, realtime_watchlist
-│   └── constants.py                ← Thêm CONFLICT_KEYS["price_intraday"]
-│
-└── docker-compose.yml              ← Thêm redis service
-```
-
----
-
-## 7. Config mới (settings.py & .env)
-
-```python
-# config/settings.py — thêm vào BaseSettings
-redis_url: str = "redis://localhost:6379/0"
-realtime_watchlist: str = ""        # CSV: "HPG,VCB,FPT" — rỗng = dùng VN30 từ DB
-realtime_resolutions: str = "1,5"  # Timeframes: "1,5" = 1m và 5m
-```
+## 7. Config `.env`
 
 ```env
-# .env
-REDIS_URL=redis://redis:6379/0
-REALTIME_WATCHLIST=                 # Để trống = VN30 từ DB
-REALTIME_RESOLUTIONS=1,5
+# DNSE credentials (bắt buộc cho realtime)
+DNSE_USERNAME=your_email@example.com
+DNSE_PASSWORD=your_password
+
+# Redis
+REDIS_HOST=localhost          # Hoặc "redis" trong Docker
+REDIS_PORT=6379
+
+# Realtime settings
+REALTIME_ENABLED=true         # false = tắt hoàn toàn
+REALTIME_WATCHLIST=           # Để trống = VN30 từ DB; hoặc "HPG,VCB,FPT"
+REALTIME_RESOLUTIONS=1,5      # Timeframes: 1m và 5m
+
+# Cron schedule (optional override)
+CRON_REALTIME_START=0 7 * * 1-5    # Khởi động subscriber T2–T6 07:00
+CRON_REALTIME_STOP=15 15 * * 1-5   # Dừng subscriber T2–T6 15:15
 ```
 
 ---
 
-## 8. Docker Compose — thay đổi
+## 8. Docker Compose — Các services liên quan
 
 ```yaml
-# docker-compose.yml — thêm services
+redis:
+  image: redis:7-alpine
+  restart: always
+  ports:
+    - "6379:6379"
+  volumes:
+    - redis_data:/data
+  command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
 
-services:
-  # --- Existing ---
-  postgres:
-    image: postgres:16-alpine
-    # ... (không đổi)
+realtime-subscriber:
+  build: .
+  restart: always
+  command: python -m realtime.subscriber
+  environment:
+    - DNSE_USERNAME=${DNSE_USERNAME}
+    - DNSE_PASSWORD=${DNSE_PASSWORD}
+    - REDIS_HOST=redis
+    - REALTIME_WATCHLIST=${REALTIME_WATCHLIST}
+    - REALTIME_RESOLUTIONS=${REALTIME_RESOLUTIONS}
+  depends_on:
+    redis:     { condition: service_healthy }
+    postgres:  { condition: service_healthy }
 
-  pipeline:
-    build: .
-    command: python main.py schedule
-    # ... (không đổi)
-
-  # --- New ---
-  redis:
-    image: redis:7-alpine
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-
-  realtime-subscriber:
-    build: .
-    restart: always
-    command: python -m realtime.subscriber
-    environment:
-      - DNSE_USERNAME=${DNSE_USERNAME}
-      - DNSE_PASSWORD=${DNSE_PASSWORD}
-      - REDIS_URL=redis://redis:6379/0
-      - REALTIME_WATCHLIST=${REALTIME_WATCHLIST}
-      - REALTIME_RESOLUTIONS=${REALTIME_RESOLUTIONS}
-    depends_on:
-      - redis
-      - postgres
-
-  realtime-processor:
-    build: .
-    restart: always
-    command: python -m realtime.processor
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-      - postgres
-    deploy:
-      replicas: 1          # Tăng lên 2-3 khi cần scale
-
-volumes:
-  redis_data:
+realtime-processor:
+  build: .
+  restart: always
+  command: python -m realtime.processor
+  environment:
+    - REDIS_HOST=redis
+  depends_on:
+    redis:     { condition: service_healthy }
+    postgres:  { condition: service_healthy }
+  deploy:
+    replicas: 1   # Tăng lên 2-3 khi cần scale
 ```
 
-**Redis config giải thích:**
-- `--appendonly yes`: Persist Redis data xuống disk — tránh mất messages khi restart
-- `--maxmemory 512mb`: Giới hạn RAM — đủ cho ~50 symbols × 2 timeframes × 6h giao dịch
-- `--maxmemory-policy allkeys-lru`: Khi đầy RAM → xóa message cũ nhất
+**Lưu ý Redis config:**
+- `--appendonly yes`: Persist messages xuống disk — không mất data khi restart
+- `--maxmemory 512mb`: Đủ cho ~50 symbols × 2 timeframes × 6h giao dịch (~100MB thực tế)
+- `--maxmemory-policy allkeys-lru`: Khi đầy → xóa message cũ nhất
 
 ---
 
-## 9. Dependencies mới
+## 9. Error Handling & Reliability
 
-```
-paho-mqtt>=2.0     # MQTT client (DNSE đã dùng, đã có)
-redis>=5.0         # Redis Python client + Streams support
-```
-
----
-
-## 10. Error Handling & Reliability
-
-### 10.1 Subscriber
+### Subscriber
 
 | Tình huống | Xử lý |
 |---|---|
-| Mất kết nối MQTT | `on_disconnect` → backoff reconnect (1s→5s→30s→5m) |
-| JWT hết hạn | Refresh tự động sau 7h, reconnect MQTT với token mới |
-| Redis không kết nối được | Retry với backoff, log error — **không crash** |
-| DNSE broker down | Retry không giới hạn, log cảnh báo mỗi 5 phút |
-| Message JSON lỗi | Log và bỏ qua — không crash toàn process |
+| Mất kết nối MQTT | `on_disconnect` → backoff reconnect (1s→5s→30s→300s) |
+| JWT hết hạn | Thread riêng refresh mỗi 7h, reconnect MQTT với token mới |
+| Redis không kết nối | Retry với backoff, log error — không crash process |
+| DNSE broker down | Retry không giới hạn, log cảnh báo |
+| Message JSON lỗi | Log warning, bỏ qua — không crash |
 
-### 10.2 Processor
+### Processor
 
 | Tình huống | Xử lý |
 |---|---|
-| PostgreSQL down | Retry batch upsert với backoff — **không ACK** cho Redis |
-| Message thiếu field | Bỏ qua message, log warning |
-| Processor crash | Messages ở trạng thái "pending" — worker mới claim lại qua XAUTOCLAIM |
-| Duplicate message | Upsert với `ON CONFLICT DO UPDATE` — safe |
-
-### 10.3 Message không được xử lý (Dead Letter)
-
-Nếu message pending quá 30 phút → claim lại tối đa 3 lần → nếu vẫn lỗi → log vào file `realtime_errors.log` và ACK để xóa khỏi pending list.
+| PostgreSQL down | Retry upsert với backoff — **không ACK** Redis → messages pending |
+| Message thiếu field | Bỏ qua (log warning), ACK để xóa |
+| Processor crash | Messages pending trong Redis, worker mới claim lại qua `XAUTOCLAIM` |
+| Duplicate message | `ON CONFLICT DO UPDATE` — idempotent, an toàn |
 
 ---
 
-## 11. Monitoring
+## 10. Monitoring
 
-### Metrics cần theo dõi
+### Kiểm tra Redis Stream
 
-| Metric | Cách đo | Ngưỡng cảnh báo |
+```bash
+# Số messages đang chờ xử lý
+docker exec stockapp_redis redis-cli XLEN stream:ohlc:1m
+docker exec stockapp_redis redis-cli XLEN stream:ohlc:5m
+
+# Xem messages gần nhất
+docker exec stockapp_redis redis-cli XRANGE stream:ohlc:1m - + COUNT 5
+
+# Pending messages (chưa được ACK)
+docker exec stockapp_redis redis-cli XPENDING stream:ohlc:1m ohlc-processors - + 10
+```
+
+### Kiểm tra data trong DB
+
+```sql
+-- Số nến theo ngày và timeframe
+SELECT DATE(time AT TIME ZONE 'Asia/Ho_Chi_Minh') AS date,
+       resolution,
+       COUNT(*) AS candles,
+       COUNT(DISTINCT symbol) AS symbols
+FROM price_intraday
+GROUP BY 1, 2
+ORDER BY 1 DESC, 2;
+
+-- Nến mới nhất của HPG
+SELECT time AT TIME ZONE 'Asia/Ho_Chi_Minh' AS time_ict,
+       resolution, open, high, low, close, volume
+FROM price_intraday
+WHERE symbol = 'HPG'
+ORDER BY time DESC
+LIMIT 10;
+
+-- Latency: thời gian từ khi nến kết thúc đến khi vào DB
+SELECT symbol, resolution,
+       EXTRACT(EPOCH FROM (fetched_at - time)) AS lag_seconds
+FROM price_intraday
+WHERE time > NOW() - INTERVAL '1 hour'
+ORDER BY lag_seconds DESC
+LIMIT 10;
+```
+
+### Ngưỡng cảnh báo
+
+| Metric | Cách đo | Ngưỡng |
 |---|---|---|
-| Redis stream length | `XLEN stream:ohlc:1m` | > 100,000 messages |
-| Pending messages | `XPENDING stream:ohlc:1m ohlc-processors` | > 1,000 pending |
-| Message latency | `received_at - time` | > 30s |
-| MQTT connection status | Log on_connect/on_disconnect | Disconnect > 2 lần/giờ |
-| DB insert rate | Count records mỗi phút | < 10 records/phút (giờ giao dịch) |
+| Redis stream length | `XLEN stream:ohlc:1m` | > 100,000 |
+| Pending messages | `XPENDING ...` | > 1,000 |
+| Message latency | `fetched_at - time` | > 30s |
+| MQTT disconnect | Log `on_disconnect` | > 2 lần/giờ |
+| DB insert rate | COUNT trong 1 phút | < 10/phút (giờ giao dịch) |
 
-### Logging
+---
 
+## 11. Query cho Backend Java
+
+```sql
+-- Lấy nến 5m của HPG trong ngày hôm nay
+SELECT time AT TIME ZONE 'Asia/Ho_Chi_Minh' AS time_ict,
+       open, high, low, close, volume
+FROM price_intraday
+WHERE symbol = 'HPG'
+  AND resolution = 5
+  AND time >= CURRENT_DATE AT TIME ZONE 'Asia/Ho_Chi_Minh'
+ORDER BY time ASC;
+
+-- Lấy snapshot intraday mới nhất (tất cả VN30)
+SELECT DISTINCT ON (symbol)
+       symbol, time AT TIME ZONE 'Asia/Ho_Chi_Minh' AS last_time,
+       close, volume
+FROM price_intraday
+WHERE resolution = 1
+  AND time > NOW() - INTERVAL '30 minutes'
+ORDER BY symbol, time DESC;
+
+-- Ghép intraday với EOD (chart có historical + intraday hôm nay)
+SELECT date::timestamptz AS time, close, volume, 'eod' AS type
+FROM price_history
+WHERE symbol = 'HPG' AND date >= CURRENT_DATE - 30
+UNION ALL
+SELECT time, close, volume, 'intraday' AS type
+FROM price_intraday
+WHERE symbol = 'HPG' AND resolution = 5 AND time >= CURRENT_DATE AT TIME ZONE 'Asia/Ho_Chi_Minh'
+ORDER BY time ASC;
 ```
-logs/
-├── realtime_subscriber.log   # MQTT connection, subscribe events
-├── realtime_processor.log    # Batch upsert, error messages
-└── realtime_errors.log       # Dead letter messages
+
+---
+
+## 12. Continuous Aggregates (TimescaleDB)
+
+Sau khi data vào `price_intraday`, TimescaleDB tự động tính toán:
+
+| View | Từ | Dùng cho |
+|---|---|---|
+| `cagg_ohlc_5m` | `price_intraday` 1m | Nến 5m (tính từ 1m) |
+| `cagg_ohlc_1h` | `cagg_ohlc_5m` | Nến 1h |
+| `cagg_ohlc_1d` | `cagg_ohlc_1h` | Nến 1 ngày (từ intraday) |
+
+Query trực tiếp từ continuous aggregates để tối ưu hiệu năng:
+```sql
+SELECT time_bucket('5 minutes', bucket) AS time, symbol,
+       first(open, bucket) AS open,
+       max(high) AS high,
+       min(low) AS low,
+       last(close, bucket) AS close,
+       sum(volume) AS volume
+FROM cagg_ohlc_5m
+WHERE symbol = 'HPG'
+  AND bucket >= NOW() - INTERVAL '1 day'
+GROUP BY 1, 2
+ORDER BY 1;
 ```
-
----
-
-## 12. Lộ trình implement
-
-### Phase RT-1 — Nền tảng (tuần 1)
-
-**Mục tiêu:** Redis + DB schema + auth module hoạt động.
-
-- [ ] Thêm Redis vào `docker-compose.yml`
-- [ ] Tạo `db/migrations/007_price_intraday.sql` và chạy migration
-- [ ] Thêm `redis_url`, `realtime_watchlist` vào `config/settings.py`
-- [ ] Viết `realtime/auth.py` — JWT flow + investorId
-- [ ] Viết `realtime/watchlist.py` — load từ env/DB
-
-**Kiểm tra:** Auth flow trả về token và investorId hợp lệ.
-
----
-
-### Phase RT-2 — MQTT Subscriber (tuần 2)
-
-**Mục tiêu:** Subscribe OHLC và push vào Redis Streams.
-
-- [ ] Viết `realtime/subscriber.py` — MQTT connect + subscribe + XADD
-- [ ] Test với 5 symbol (HPG, VCB, FPT, VNM, MWG)
-- [ ] Verify data trong Redis: `XLEN stream:ohlc:1m`, `XRANGE stream:ohlc:1m - +`
-- [ ] Implement JWT auto-refresh (timer mỗi 7h)
-- [ ] Implement reconnect với backoff
-
-**Kiểm tra:** 5 symbols × 2 timeframes push đủ messages vào Redis trong 1h test.
-
----
-
-### Phase RT-3 — Stream Processor (tuần 3)
-
-**Mục tiêu:** Đọc Redis → upsert PostgreSQL.
-
-- [ ] Viết `realtime/processor.py` — XREADGROUP + validate + upsert
-- [ ] Tạo consumer group: `XGROUP CREATE stream:ohlc:1m ohlc-processors $ MKSTREAM`
-- [ ] Implement XAUTOCLAIM cho pending messages
-- [ ] Test end-to-end: MQTT → Redis → PostgreSQL
-- [ ] Verify data trong `price_intraday` table
-
-**Kiểm tra:** Dữ liệu nến 1m và 5m xuất hiện trong DB với lag < 30s so với thị trường.
-
----
-
-### Phase RT-4 — Session Guard & Production (tuần 4)
-
-**Mục tiêu:** Vận hành production-ready.
-
-- [ ] Viết `realtime/session_guard.py` — chỉ active trong giờ giao dịch
-- [ ] Thêm Docker services `realtime-subscriber` và `realtime-processor`
-- [ ] Thêm monitoring metrics (log Redis lag, pending count)
-- [ ] Implement retention cleanup job
-- [ ] Test full watchlist (~50 symbols) trong 1 ngày giao dịch
-- [ ] Document API schema cho Backend team
-
-**Kiểm tra:** 50 symbols × 2 timeframes chạy ổn định 1 tuần không crash, data đầy đủ.
-
----
-
-### Phase RT-5 — Scale & Mở rộng (tùy chọn)
-
-Sau khi RT-1 đến RT-4 ổn định:
-
-- [ ] Thêm timeframe 15m, 30m, 1H nếu cần
-- [ ] Mở rộng watchlist ra toàn thị trường (cần đánh giá Redis memory)
-- [ ] Thêm index data (VNINDEX, VN30) vào separate stream
-- [ ] Horizontal scale processor (replicas: 2-3)
 
 ---
 
 ## 13. Câu hỏi thường gặp
 
 **Q: Real-time pipeline có ảnh hưởng đến batch pipeline không?**
-A: Không. Chạy trên process riêng, bảng DB riêng (`price_intraday`). Batch pipeline giữ nguyên.
+A: Không. Chạy trên daemon thread riêng, bảng DB riêng (`price_intraday`). Batch pipeline hoàn toàn độc lập.
 
-**Q: Khi thị trường đóng cửa, subscriber làm gì?**
-A: Session guard tắt MQTT connection sau 15:05. Processor tiếp tục drain Redis cho đến khi hết messages. Restart vào sáng hôm sau.
+**Q: Khi thị trường đóng cửa (15:15), subscriber làm gì?**
+A: APScheduler gọi `_stop_realtime_subscriber()` → set `_running=False` + `client.disconnect()`. Processor tiếp tục chạy và drain hết messages còn lại trong Redis. Sáng T2–T6 07:00 subscriber tự khởi động lại.
+
+**Q: Nếu chạy `python main.py schedule` sau 07:00 trong ngày giao dịch thì sao?**
+A: Processor khởi động ngay. Subscriber sẽ đợi đến 07:00 ngày tiếp theo. Nếu cần subscribe ngay lập tức, chạy thêm `python -m realtime.subscriber` riêng.
 
 **Q: Dữ liệu DNSE MDDS có delay không?**
-A: Feed trực tiếp từ KRX — latency rất thấp (< 1s). Là nguồn data real-time chất lượng cao nhất hiện tại.
+A: Feed trực tiếp từ KRX — latency < 1s. Là nguồn data real-time chất lượng cao nhất hiện tại.
 
 **Q: Cần bao nhiêu RAM cho Redis?**
-A: 50 symbols × 2 timeframes × 375 nến/ngày (6h × 60m + 6h × 12 nến 5m) × ~200 bytes/message ≈ 7.5 MB/ngày. Với maxlen 500,000 messages ≈ 100 MB. 512 MB là đủ dư dả.
+A: 30 symbols × 2 timeframes × 375 nến/ngày × ~300 bytes/message ≈ 6.75 MB/ngày. `maxlen=500,000` ≈ ~100 MB. Config 512 MB là đủ dư dả.
 
-**Q: Backend Java đọc dữ liệu như thế nào?**
-A: Đọc trực tiếp từ PostgreSQL bảng `price_intraday`. Query gợi ý:
-```sql
-SELECT time, open, high, low, close, volume
-FROM price_intraday
-WHERE symbol = 'HPG'
-  AND resolution = 5
-  AND time >= NOW() - INTERVAL '1 day'
-ORDER BY time ASC;
-```
+**Q: Nếu DNSE MDDS ngừng dịch vụ?**
+A: Subscriber reconnect vô hạn với backoff (max 5 phút/lần). Batch pipeline (`sync_prices` EOD) không bị ảnh hưởng. Intraday data gián đoạn cho đến khi kết nối lại.
 
-**Q: Nếu DNSE MDDS ngừng dịch vụ thì sao?**
-A: Subscriber sẽ reconnect vô hạn và log cảnh báo. Batch pipeline (sync_prices EOD) không bị ảnh hưởng. Intraday data sẽ bị gián đoạn cho đến khi kết nối lại.
+**Q: Làm sao scale processor khi khối lượng tăng?**
+A: Chạy thêm `python -m realtime.processor` hoặc tăng `replicas` trong Docker Compose. Redis consumer group tự phân phối messages giữa các workers.
 
 ---
 
-## 14. Trạng thái tracking
+## 14. Trạng thái
 
-| Phase | Trạng thái | Bắt đầu | Hoàn thành |
-|---|---|---|---|
-| RT-1 — Nền tảng (Redis, DB, Auth) | 🔲 Chưa bắt đầu | — | — |
-| RT-2 — MQTT Subscriber | 🔲 Chưa bắt đầu | — | — |
-| RT-3 — Stream Processor | 🔲 Chưa bắt đầu | — | — |
-| RT-4 — Session Guard & Production | 🔲 Chưa bắt đầu | — | — |
-| RT-5 — Scale & Mở rộng | 🔲 Tùy chọn | — | — |
+| Phase | Trạng thái | Hoàn thành |
+|---|---|---|
+| RT-1 — Nền tảng (Redis, DB, Auth, Watchlist) | ✅ Hoàn thành | 2026-03-21 |
+| RT-2 — MQTT Subscriber | ✅ Hoàn thành | 2026-03-21 |
+| RT-3 — Stream Processor | ✅ Hoàn thành | 2026-03-21 |
+| RT-4 — Session Guard & Scheduler Integration | ✅ Hoàn thành | 2026-03-28 |
+| RT-5 — Scale & Mở rộng (15m, 30m, 1H, full market) | 🔲 Tùy chọn | — |
+
+**Verified:** End-to-end test ngày 2026-03-28 — Auth OK (investorId=1002161780), MQTT connect OK, inject test messages → processor upsert 5 rows vào `price_intraday` thành công.

@@ -14,13 +14,14 @@ from etl.transformers.company import CompanyTransformer
 from utils.logger import logger
 
 # Các loại dữ liệu cần sync — overview xử lý riêng (UPDATE companies, không upsert)
-_DATA_TYPES = ["shareholders", "officers", "subsidiaries", "events"]
+_DATA_TYPES = ["shareholders", "officers", "subsidiaries", "events", "news"]
 
 _TABLE_MAP = {
     "shareholders": "shareholders",
     "officers":     "officers",
     "subsidiaries": "subsidiaries",
     "events":       "corporate_events",
+    "news":         "company_news",
 }
 
 
@@ -44,6 +45,9 @@ def _update_companies_overview(symbol: str, extractor: CompanyExtractor,
         time.sleep(settings.request_delay)
         data = transformer.transform_overview(df_raw, symbol)
 
+        if not data:
+            return True
+
         with engine.begin() as conn:
             conn.execute(
                 text("""
@@ -52,6 +56,8 @@ def _update_companies_overview(symbol: str, extractor: CompanyExtractor,
                         issue_share     = :issue_share,
                         charter_capital = :charter_capital,
                         icb_code        = COALESCE(:icb_code, icb_code),
+                        history         = COALESCE(:history, history),
+                        company_profile = COALESCE(:company_profile, company_profile),
                         updated_at      = NOW()
                     WHERE symbol = :symbol
                 """),
@@ -173,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data-types", nargs="+", default=None,
         choices=_DATA_TYPES,
-        help="Loại dữ liệu. Mặc định: tất cả 4 loại.",
+        help="Loại dữ liệu. Mặc định: tất cả 5 loại.",
     )
     parser.add_argument(
         "--workers", type=int, default=None,

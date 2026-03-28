@@ -14,7 +14,8 @@ def _parse_args() -> argparse.Namespace:
 Ví dụ:
   python main.py sync_listing
   python main.py sync_financials --symbol HPG VCB FPT
-  python main.py sync_company --symbol HPG --workers 3
+  python main.py sync_company --symbol HPG VCB --workers 3
+  python main.py sync_company --symbol HPG --data-types news --no-overview
   python main.py sync_ratios
   python main.py sync_prices --symbol HPG VCB FPT
   python main.py sync_prices --full-history
@@ -40,6 +41,11 @@ Ví dụ:
         help="Mã cần sync (ví dụ: HPG VCB). Mặc định: tất cả mã đang niêm yết.",
     )
     p_fin.add_argument(
+        "--report-type", nargs="+", metavar="TYPE",
+        choices=["balance_sheet", "income_statement", "cash_flow"],
+        help="Loại báo cáo cần sync. Mặc định: cả 3 loại.",
+    )
+    p_fin.add_argument(
         "--workers", type=int, metavar="N",
         help="Số luồng song song. Mặc định: settings.max_workers.",
     )
@@ -47,10 +53,21 @@ Ví dụ:
     # ── sync_company ──────────────────────────────────────────────────────────
     p_co = subparsers.add_parser(
         "sync_company",
-        help="Đồng bộ thông tin doanh nghiệp (cổ đông, lãnh đạo, công ty con, sự kiện)",
+        help="Đồng bộ thông tin doanh nghiệp (cổ đông, lãnh đạo, công ty con, sự kiện, tin tức)",
     )
-    p_co.add_argument("--symbol", nargs="+", metavar="SYM")
-    p_co.add_argument("--workers", type=int, metavar="N")
+    p_co.add_argument("--symbol", nargs="+", metavar="SYM",
+                      help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.")
+    p_co.add_argument("--workers", type=int, metavar="N",
+                      help="Số luồng song song. Mặc định: settings.max_workers.")
+    p_co.add_argument(
+        "--data-types", nargs="+", metavar="TYPE",
+        choices=["shareholders", "officers", "subsidiaries", "events", "news"],
+        help="Loại dữ liệu cần sync. Mặc định: tất cả 5 loại.",
+    )
+    p_co.add_argument(
+        "--no-overview", action="store_true",
+        help="Bỏ qua bước UPDATE icb_code/charter_capital/history vào companies.",
+    )
 
     # ── sync_ratios ───────────────────────────────────────────────────────────
     p_rat = subparsers.add_parser(
@@ -98,13 +115,18 @@ def main() -> None:
     elif args.command == "sync_financials":
         from jobs.sync_financials import run
         symbols = [s.upper() for s in args.symbol] if args.symbol else None
-        result = run(symbols=symbols, max_workers=args.workers)
+        result = run(symbols=symbols, report_types=args.report_type, max_workers=args.workers)
         logger.info(f"Kết quả: {result}")
 
     elif args.command == "sync_company":
         from jobs.sync_company import run
         symbols = [s.upper() for s in args.symbol] if args.symbol else None
-        result = run(symbols=symbols, max_workers=args.workers)
+        result = run(
+            symbols=symbols,
+            max_workers=args.workers,
+            data_types=args.data_types,
+            sync_overview=not args.no_overview,
+        )
         logger.info(f"Kết quả: {result}")
 
     elif args.command == "sync_ratios":

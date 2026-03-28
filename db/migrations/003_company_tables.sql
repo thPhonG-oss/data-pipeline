@@ -19,9 +19,6 @@ CREATE TABLE IF NOT EXISTS shareholders (
 CREATE INDEX IF NOT EXISTS idx_shareholders_symbol ON shareholders(symbol);
 CREATE INDEX IF NOT EXISTS idx_shareholders_date   ON shareholders(snapshot_date);
 
-COMMENT ON TABLE shareholders IS
-    'Danh sách cổ đông lớn và cơ cấu sở hữu. Nguồn: vnstock_data.Company.shareholders().';
-
 -- ------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS officers (
@@ -43,9 +40,6 @@ CREATE TABLE IF NOT EXISTS officers (
 
 CREATE INDEX IF NOT EXISTS idx_officers_symbol ON officers(symbol);
 
-COMMENT ON TABLE officers IS
-    'Ban lãnh đạo và thành viên HĐQT. Nguồn: vnstock_data.Company.officers().';
-
 -- ------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS subsidiaries (
@@ -63,9 +57,6 @@ CREATE TABLE IF NOT EXISTS subsidiaries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_subsidiaries_symbol ON subsidiaries(symbol);
-
-COMMENT ON TABLE subsidiaries IS
-    'Công ty con và công ty liên kết. Nguồn: vnstock_data.Company.subsidiaries().';
 
 -- ------------------------------------------------------------
 
@@ -91,10 +82,6 @@ CREATE TABLE IF NOT EXISTS corporate_events (
 CREATE INDEX IF NOT EXISTS idx_events_symbol      ON corporate_events(symbol);
 CREATE INDEX IF NOT EXISTS idx_events_record_date ON corporate_events(record_date);
 CREATE INDEX IF NOT EXISTS idx_events_code        ON corporate_events(event_list_code);
-
-COMMENT ON TABLE corporate_events IS
-    'Sự kiện doanh nghiệp: chia cổ tức (DIV), phát hành thêm (ISS), niêm yết thêm (AIS), '
-    'tách cổ phiếu (SPL)... Nguồn: vnstock_data.Company.events().';
 
 -- ------------------------------------------------------------
 
@@ -139,7 +126,6 @@ CREATE TABLE IF NOT EXISTS ratio_summary (
     dividend               NUMERIC(15, 2),
     issue_share            BIGINT,
     charter_capital        BIGINT,
-    -- Chỉ số đặc thù ngành (ngân hàng: NIM/CAR/LDR, BĐS, v.v.)
     extra_metrics          JSONB,
     fetched_at             TIMESTAMP    DEFAULT NOW(),
 
@@ -149,8 +135,3 @@ CREATE TABLE IF NOT EXISTS ratio_summary (
 CREATE INDEX IF NOT EXISTS idx_rs_symbol ON ratio_summary(symbol);
 CREATE INDEX IF NOT EXISTS idx_rs_roe    ON ratio_summary(roe);
 CREATE INDEX IF NOT EXISTS idx_rs_pe     ON ratio_summary(pe);
-
-COMMENT ON TABLE ratio_summary IS
-    'Snapshot tổng hợp tài chính mới nhất từ Company.ratio_summary(). '
-    'Dùng cho stock screener và so sánh nhanh giữa các mã. '
-    'extra_metrics (JSONB) chứa chỉ số đặc thù ngành.';
