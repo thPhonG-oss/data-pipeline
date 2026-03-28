@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # ── Vnstock ───────────────────────────────────────────────
     vnstock_source: str = "vci"
-    vnstock_api_key: str = "vnstock_d3a641fe0794fe26c1e910bf0cc6ebe8"
+    vnstock_api_key: str = ""
 
     # ── Pipeline ──────────────────────────────────────────────
     max_workers: int = 5
@@ -35,8 +35,11 @@ class Settings(BaseSettings):
     cron_sync_financials: str = "0 3 1,15 * *"    # Ngày 1 & 15 hàng tháng 03:00
     cron_sync_company:    str = "0 2 * * 1"        # Thứ Hai 02:00
     cron_sync_ratios:     str = "30 18 * * *"      # Hàng ngày 18:30
-    cron_sync_prices:     str = "0 19 * * 1-5"     # Thứ 2–6 lúc 19:00 (sau đóng cửa)
-    cron_alert_check:     str = "0 * * * *"        # Hàng giờ :00
+    cron_sync_prices:          str = "0 19 * * 1-5"   # Thứ 2–6 lúc 19:00 (sau đóng cửa)
+    cron_alert_check:          str = "0 * * * *"      # Hàng giờ :00
+    cron_realtime_start:       str = "0 7 * * 1-5"    # Thứ 2–6 lúc 07:00 (trước ATO)
+    cron_realtime_stop:        str = "15 15 * * 1-5"  # Thứ 2–6 lúc 15:15 (sau ATC)
+    realtime_enabled:          bool = True             # Tắt/bật realtime pipeline
 
     # ── DNSE ──────────────────────────────────────────────────
     dnse_username: str = ""   # Email hoặc SĐT đăng ký tài khoản DNSE

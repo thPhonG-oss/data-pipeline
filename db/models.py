@@ -37,6 +37,7 @@ class IcbIndustry(Base):
     parent_code:  Mapped[Optional[str]] = mapped_column(
         String(10), ForeignKey("icb_industries.icb_code")
     )
+    definition:   Mapped[Optional[str]] = mapped_column(Text)
     created_at:   Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
 
@@ -61,6 +62,8 @@ class Company(Base):
     company_id:       Mapped[Optional[int]]      = mapped_column(Integer)
     isin:             Mapped[Optional[str]]      = mapped_column(String(20))
     tax_code:         Mapped[Optional[str]]      = mapped_column(String(20))
+    history:          Mapped[Optional[str]]      = mapped_column(Text)
+    company_profile:  Mapped[Optional[str]]      = mapped_column(Text)
     created_at:       Mapped[datetime]           = mapped_column(DateTime, server_default=func.now())
     updated_at:       Mapped[datetime]           = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -68,216 +71,88 @@ class Company(Base):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. BẢNG BÁO CÁO TÀI CHÍNH (Financial Statements)
+# 2. BẢNG BÁO CÁO TÀI CHÍNH THỐNG NHẤT
 # ══════════════════════════════════════════════════════════════════════════════
 
-class BalanceSheet(Base):
-    """Bảng cân đối kế toán."""
-    __tablename__ = "balance_sheets"
-    __table_args__ = (UniqueConstraint("symbol", "period", "period_type"),)
+class FinancialReport(Base):
+    """
+    Bảng tài chính thống nhất cho 4 mẫu biểu × 3 loại báo cáo.
 
-    id:          Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    symbol:      Mapped[str] = mapped_column(String(10), ForeignKey("companies.symbol"), nullable=False)
-    period:      Mapped[str] = mapped_column(String(10), nullable=False)
-    period_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    Thay thế các bảng cũ: balance_sheets, income_statements, cash_flows, financial_ratios.
+    Discriminator: statement_type + template.
+    """
+    __tablename__ = "financial_reports"
+    __table_args__ = (UniqueConstraint("symbol", "period", "period_type", "statement_type"),)
 
-    # Tài sản ngắn hạn
-    cash_and_equivalents:   Mapped[Optional[int]] = mapped_column(BigInteger)
-    short_term_investments: Mapped[Optional[int]] = mapped_column(BigInteger)
-    accounts_receivable:    Mapped[Optional[int]] = mapped_column(BigInteger)
-    inventory:              Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_current_assets:   Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_current_assets:   Mapped[Optional[int]] = mapped_column(BigInteger)
+    id:             Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol:         Mapped[str] = mapped_column(String(10), ForeignKey("companies.symbol"), nullable=False)
+    period:         Mapped[str] = mapped_column(String(10), nullable=False)
+    period_type:    Mapped[str] = mapped_column(String(10), nullable=False)   # 'year' | 'quarter'
+    statement_type: Mapped[str] = mapped_column(String(20), nullable=False)   # 'balance_sheet' | ...
+    template:       Mapped[str] = mapped_column(String(20), nullable=False)   # 'non_financial' | ...
+    source:         Mapped[str] = mapped_column(String(20), server_default="vci")
 
-    # Tài sản dài hạn
-    long_term_receivables:  Mapped[Optional[int]] = mapped_column(BigInteger)
-    fixed_assets:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    investment_properties:  Mapped[Optional[int]] = mapped_column(BigInteger)
-    long_term_investments:  Mapped[Optional[int]] = mapped_column(BigInteger)
-    intangible_assets:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_long_term_assets: Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_long_term_assets: Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_assets:           Mapped[Optional[int]] = mapped_column(BigInteger)
+    # ── Tài sản — Cross-Industry Core ─────────────────────────────
+    cash_and_equivalents:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    total_current_assets:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    total_non_current_assets: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    total_assets:             Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    total_liabilities:        Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    total_equity:             Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    charter_capital:          Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    short_term_debt:          Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    long_term_debt:           Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    retained_earnings:        Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
-    # Nợ ngắn hạn
-    short_term_debt:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    accounts_payable:          Mapped[Optional[int]] = mapped_column(BigInteger)
-    advances_from_customers:   Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_current_liabilities: Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_current_liabilities: Mapped[Optional[int]] = mapped_column(BigInteger)
+    # ── Tài sản — Phi tài chính (NULL với Banking/Insurance) ──────
+    inventory_net:            Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    inventory_gross:          Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    short_term_receivables:   Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    ppe_net:                  Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    ppe_gross:                Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    accumulated_depreciation: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    construction_in_progress: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
-    # Nợ dài hạn
-    long_term_debt:              Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_long_term_liabilities: Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_long_term_liabilities: Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_liabilities:           Mapped[Optional[int]] = mapped_column(BigInteger)
+    # ── Tài sản — Ngân hàng (NULL với Non-Financial) ──────────────
+    customer_loans_gross:  Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    loan_loss_reserve:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    customer_deposits:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
-    # Vốn chủ sở hữu
-    charter_capital_fs:     Mapped[Optional[int]] = mapped_column(BigInteger)
-    share_premium:          Mapped[Optional[int]] = mapped_column(BigInteger)
-    retained_earnings:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_equity:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    minority_interest:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_equity:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    total_liabilities_equity: Mapped[Optional[int]] = mapped_column(BigInteger)
+    # ── KQKD — Cross-Industry Core ────────────────────────────────
+    net_revenue:       Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    operating_profit:  Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    ebt:               Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    net_profit:        Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    net_profit_parent: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    eps_basic:         Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
 
-    raw_data:   Mapped[Optional[dict]] = mapped_column(JSONB)
-    source:     Mapped[Optional[str]]  = mapped_column(String(20), server_default="vci")
-    fetched_at: Mapped[datetime]       = mapped_column(DateTime, server_default=func.now())
+    # ── KQKD — Phi tài chính (NULL với Banking/Insurance) ─────────
+    gross_revenue:        Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    cost_of_goods_sold:   Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    gross_profit:         Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    selling_expenses:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    admin_expenses:       Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    interest_expense:     Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
+    # ── KQKD — Ngân hàng (NULL với Non-Financial) ─────────────────
+    net_interest_income:      Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    credit_provision_expense: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
-class IncomeStatement(Base):
-    """Báo cáo kết quả kinh doanh."""
-    __tablename__ = "income_statements"
-    __table_args__ = (UniqueConstraint("symbol", "period", "period_type"),)
+    # ── LCTT — Core (tất cả template) ─────────────────────────────
+    cfo:            Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    cfi:            Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    cff:            Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    capex:          Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    net_cash_change: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    cash_beginning: Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
+    cash_ending:    Mapped[Optional[float]] = mapped_column(Numeric(20, 2))
 
-    id:          Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    symbol:      Mapped[str] = mapped_column(String(10), ForeignKey("companies.symbol"), nullable=False)
-    period:      Mapped[str] = mapped_column(String(10), nullable=False)
-    period_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    # ── Lưu trữ thô ───────────────────────────────────────────────
+    raw_details: Mapped[dict] = mapped_column(JSONB, server_default="{}")
 
-    # Doanh thu
-    gross_revenue:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    revenue_deductions: Mapped[Optional[int]] = mapped_column(BigInteger)
-    net_revenue:        Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    # Chi phí & lợi nhuận
-    cogs:                   Mapped[Optional[int]] = mapped_column(BigInteger)
-    gross_profit:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    financial_income:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    financial_expense:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    interest_expense:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    selling_expense:        Mapped[Optional[int]] = mapped_column(BigInteger)
-    admin_expense:          Mapped[Optional[int]] = mapped_column(BigInteger)
-    operating_profit:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_income:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_expense:          Mapped[Optional[int]] = mapped_column(BigInteger)
-    profit_from_associates: Mapped[Optional[int]] = mapped_column(BigInteger)
-    ebt:                    Mapped[Optional[int]] = mapped_column(BigInteger)
-    income_tax:             Mapped[Optional[int]] = mapped_column(BigInteger)
-    profit_after_tax:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    minority_profit:        Mapped[Optional[int]] = mapped_column(BigInteger)
-    net_profit:             Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    # Cổ phiếu
-    eps_basic:          Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-    eps_diluted:        Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-    shares_outstanding: Mapped[Optional[int]]   = mapped_column(BigInteger)
-
-    raw_data:   Mapped[Optional[dict]] = mapped_column(JSONB)
-    source:     Mapped[Optional[str]]  = mapped_column(String(20), server_default="vci")
-    fetched_at: Mapped[datetime]       = mapped_column(DateTime, server_default=func.now())
-
-
-class CashFlow(Base):
-    """Báo cáo lưu chuyển tiền tệ."""
-    __tablename__ = "cash_flows"
-    __table_args__ = (UniqueConstraint("symbol", "period", "period_type"),)
-
-    id:          Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    symbol:      Mapped[str] = mapped_column(String(10), ForeignKey("companies.symbol"), nullable=False)
-    period:      Mapped[str] = mapped_column(String(10), nullable=False)
-    period_type: Mapped[str] = mapped_column(String(10), nullable=False)
-
-    # Hoạt động kinh doanh
-    net_profit_before_tax:     Mapped[Optional[int]] = mapped_column(BigInteger)
-    depreciation:              Mapped[Optional[int]] = mapped_column(BigInteger)
-    provision:                 Mapped[Optional[int]] = mapped_column(BigInteger)
-    unrealized_fx_gain_loss:   Mapped[Optional[int]] = mapped_column(BigInteger)
-    investment_income:         Mapped[Optional[int]] = mapped_column(BigInteger)
-    interest_expense_cf:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    change_in_receivables:     Mapped[Optional[int]] = mapped_column(BigInteger)
-    change_in_inventory:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    change_in_payables:        Mapped[Optional[int]] = mapped_column(BigInteger)
-    other_operating_changes:   Mapped[Optional[int]] = mapped_column(BigInteger)
-    income_tax_paid:           Mapped[Optional[int]] = mapped_column(BigInteger)
-    operating_cash_flow:       Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    # Hoạt động đầu tư
-    capex:                           Mapped[Optional[int]] = mapped_column(BigInteger)
-    proceeds_from_asset_disposal:    Mapped[Optional[int]] = mapped_column(BigInteger)
-    investment_purchases:            Mapped[Optional[int]] = mapped_column(BigInteger)
-    investment_proceeds:             Mapped[Optional[int]] = mapped_column(BigInteger)
-    interest_and_dividends_received: Mapped[Optional[int]] = mapped_column(BigInteger)
-    investing_cash_flow:             Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    # Hoạt động tài chính
-    proceeds_from_borrowings:      Mapped[Optional[int]] = mapped_column(BigInteger)
-    repayment_of_borrowings:       Mapped[Optional[int]] = mapped_column(BigInteger)
-    proceeds_from_equity_issuance: Mapped[Optional[int]] = mapped_column(BigInteger)
-    dividends_paid:                Mapped[Optional[int]] = mapped_column(BigInteger)
-    financing_cash_flow:           Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    net_cash_change: Mapped[Optional[int]] = mapped_column(BigInteger)
-    beginning_cash:  Mapped[Optional[int]] = mapped_column(BigInteger)
-    ending_cash:     Mapped[Optional[int]] = mapped_column(BigInteger)
-
-    raw_data:   Mapped[Optional[dict]] = mapped_column(JSONB)
-    source:     Mapped[Optional[str]]  = mapped_column(String(20), server_default="vci")
-    fetched_at: Mapped[datetime]       = mapped_column(DateTime, server_default=func.now())
-
-
-class FinancialRatio(Base):
-    """Chỉ số tài chính tổng hợp."""
-    __tablename__ = "financial_ratios"
-    __table_args__ = (UniqueConstraint("symbol", "period", "period_type"),)
-
-    id:          Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    symbol:      Mapped[str] = mapped_column(String(10), ForeignKey("companies.symbol"), nullable=False)
-    period:      Mapped[str] = mapped_column(String(10), nullable=False)
-    period_type: Mapped[str] = mapped_column(String(10), nullable=False)
-
-    # Định giá
-    pe:       Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
-    pb:       Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
-    ps:       Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
-    pcf:      Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
-    ev_ebitda: Mapped[Optional[float]] = mapped_column(Numeric(12, 4))
-    ev:       Mapped[Optional[int]]   = mapped_column(BigInteger)
-
-    # Khả năng sinh lời
-    roe:              Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    roa:              Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    roic:             Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    gross_margin:     Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    ebit_margin:      Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    net_profit_margin: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    ebitda:           Mapped[Optional[int]]   = mapped_column(BigInteger)
-    ebit:             Mapped[Optional[int]]   = mapped_column(BigInteger)
-
-    # Thanh khoản
-    current_ratio:    Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    quick_ratio:      Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    cash_ratio:       Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    interest_coverage: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-
-    # Đòn bẩy
-    debt_to_equity:   Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    debt_to_assets:   Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    financial_leverage: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-
-    # Hiệu quả hoạt động
-    asset_turnover:       Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    fixed_asset_turnover: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    inventory_days:       Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-    receivable_days:      Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-    payable_days:         Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-    cash_conversion_cycle: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-
-    # Cổ phiếu
-    eps:      Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-    eps_ttm:  Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-    bvps:     Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-    dividend: Mapped[Optional[float]] = mapped_column(Numeric(15, 2))
-
-    # Chỉ số ngành ngân hàng
-    npl_ratio: Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    car:       Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    ldr:       Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-    nim:       Mapped[Optional[float]] = mapped_column(Numeric(10, 4))
-
-    source:     Mapped[Optional[str]] = mapped_column(String(20), server_default="vci")
-    fetched_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+    # ── Audit ─────────────────────────────────────────────────────
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -421,5 +296,4 @@ class PipelineLog(Base):
             "EXTRACT(MILLISECONDS FROM finished_at - started_at)::INTEGER",
             persisted=True,
         ),
-        init=False,
     )

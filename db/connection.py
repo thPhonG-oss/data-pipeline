@@ -10,8 +10,8 @@ from config.settings import settings
 # ── Engine ────────────────────────────────────────────────────────────────────
 engine = create_engine(
     settings.database_url,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=settings.max_workers + 2,
+    max_overflow=settings.max_workers,
     pool_pre_ping=True,  # Kiểm tra connection trước khi dùng
     echo=False,
 )

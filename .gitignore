@@ -7,3 +7,12 @@ __pycache__
 
 .idea
 .worktrees
+
+everything-claude-code
+
+package-lock.json
+
+.claude
+
+.pytest_cache
+.logs/**

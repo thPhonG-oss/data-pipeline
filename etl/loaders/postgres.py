@@ -9,7 +9,7 @@ from config.constants import SERVER_GENERATED_COLS
 from config.settings import settings
 from db.connection import engine
 from etl.base.loader import BaseLoader
-from etl.loaders.helpers import chunk_dataframe, df_to_records
+from etl.loaders.helpers import df_to_records
 from utils.logger import logger
 
 
@@ -21,8 +21,9 @@ class PostgresLoader(BaseLoader):
         loader = PostgresLoader()
         rows = loader.load(
             df,
-            table="balance_sheets",
-            conflict_columns=["symbol", "period", "period_type"],
+            table="financial_reports",
+            conflict_columns=["symbol", "period", "period_type", "statement_type"],
+            jsonb_merge_columns=["raw_details"],
         )
     """
 
@@ -70,22 +71,27 @@ class PostgresLoader(BaseLoader):
         table: str,
         conflict_columns: list[str],
         update_columns: Optional[list[str]] = None,
+        on_conflict: str = "update",
+        jsonb_merge_columns: Optional[list[str]] = None,
     ) -> int:
         """
-        Upsert toàn bộ DataFrame vào bảng PostgreSQL theo từng chunk.
+        Insert/upsert toàn bộ DataFrame vào bảng PostgreSQL theo từng chunk.
 
-        - Nếu row chưa tồn tại → INSERT
-        - Nếu row đã tồn tại (conflict theo conflict_columns) → UPDATE
-        - Cột server-generated (id, duration_ms, created_at) không bao giờ bị ghi đè
+        on_conflict:
+            "update"  (default) — ON CONFLICT DO UPDATE: update nếu tồn tại, insert nếu chưa.
+            "nothing"           — ON CONFLICT DO NOTHING: chỉ insert row mới, bỏ qua nếu đã tồn tại.
 
-        Trả về tổng số dòng được xử lý.
+        jsonb_merge_columns: Các cột JSONB sẽ dùng `existing || incoming` thay vì ghi đè.
+            Ví dụ: ["raw_details"] → raw_details = financial_reports.raw_details || EXCLUDED.raw_details
+
+        Cột server-generated (id, duration_ms, created_at) không bao giờ bị ghi đè.
+        Trả về tổng số dòng được xử lý (với "nothing": chỉ đếm rows thực sự inserted).
         """
         if df.empty:
             logger.debug(f"[{table}] DataFrame rỗng — bỏ qua.")
             return 0
 
         tbl = self._reflect_table(table)
-        update_cols = self._resolve_update_columns(tbl, conflict_columns, update_columns)
 
         # Chỉ giữ các cột thực sự có trong bảng (bỏ cột dư từ transformer)
         valid_cols = {c.name for c in tbl.columns}
@@ -94,9 +100,6 @@ class PostgresLoader(BaseLoader):
         if df_filtered.empty:
             logger.warning(f"[{table}] Không có cột nào khớp với schema bảng.")
             return 0
-
-        # Loại update_cols không có trong df
-        update_cols = [c for c in update_cols if c in df_filtered.columns]
 
         total = 0
         records = df_to_records(df_filtered)
@@ -107,16 +110,29 @@ class PostgresLoader(BaseLoader):
                 continue
 
             stmt = pg_insert(tbl).values(chunk_records)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=conflict_columns,
-                set_={col: stmt.excluded[col] for col in update_cols},
-            )
+            if on_conflict == "nothing":
+                stmt = stmt.on_conflict_do_nothing(index_elements=conflict_columns)
+            else:
+                update_cols = self._resolve_update_columns(tbl, conflict_columns, update_columns)
+                update_cols = [c for c in update_cols if c in df_filtered.columns]
+                merge_set = set(jsonb_merge_columns or [])
+                set_dict = {}
+                for col in update_cols:
+                    if col in merge_set:
+                        # JSONB merge: existing || incoming (incoming key wins on conflict)
+                        set_dict[col] = tbl.c[col].op("||")(stmt.excluded[col])
+                    else:
+                        set_dict[col] = stmt.excluded[col]
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=conflict_columns,
+                    set_=set_dict,
+                )
 
             with engine.begin() as conn:
                 result = conn.execute(stmt)
                 total += result.rowcount
 
-        logger.info(f"[{table}] Upserted {total} rows.")
+        logger.info(f"[{table}] {'Inserted' if on_conflict == 'nothing' else 'Upserted'} {total} rows.")
         return total
 
     def load_log(

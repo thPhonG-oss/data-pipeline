@@ -1,0 +1,37 @@
+2026-03-25 22:14:25 | INFO     | jobs.sync_listing:35 — [sync_listing] Đọc ICB từ file JSON cục bộ (không gọi vnstock API).
+2026-03-25 22:14:25 | INFO     | etl.extractors.listing:340 — [listing] Đọc ICB từ file JSON: C:\Users\PHONG\Desktop\data-pipeline\docs\icb-industries.json
+2026-03-25 22:14:25 | INFO     | etl.extractors.listing:391 — [listing] Đọc được 249 node ICB từ file JSON.
+2026-03-25 22:14:25 | INFO     | etl.transformers.listing:86 — [icb_industries] Sau transform (JSON): 249 ngành.
+2026-03-25 22:14:25 | INFO     | etl.loaders.postgres:119 — [icb_industries] Upserted 249 rows.
+2026-03-25 22:14:25 | SUCCESS  | jobs.sync_listing:47 — [sync_listing] icb_industries: 249 rows upserted (source: local JSON).
+2026-03-25 22:14:25 | INFO     | etl.extractors.listing:301 — [listing] Listing(vnd).all_symbols()...
+2026-03-25 22:14:27 | INFO     | etl.extractors.listing:305 — [listing] Lấy được 1981 mã chứng khoán.
+2026-03-25 22:14:27 | INFO     | etl.transformers.listing:154 — [companies] Sau transform: 1981 công ty.
+2026-03-25 22:14:27 | INFO     | etl.loaders.postgres:119 — [companies] Upserted 1981 rows.
+2026-03-25 22:14:27 | SUCCESS  | jobs.sync_listing:75 — [sync_listing] companies: 1981 rows upserted.
+2026-03-25 22:14:27 | INFO     | __main__:96 — Kết quả: {'icb_industries': {'status': 'success', 'records': 249}, 'companies': {'status': 'success', 'records': 1981}}
+2026-03-25 22:30:07 | INFO     | jobs.sync_listing:38 — [sync_listing] Đọc ICB từ file JSON cục bộ (không gọi vnstock API).
+2026-03-25 22:30:07 | INFO     | etl.extractors.listing:340 — [listing] Đọc ICB từ file JSON: C:\Users\PHONG\Desktop\data-pipeline\docs\icb-industries.json
+2026-03-25 22:30:07 | INFO     | etl.extractors.listing:391 — [listing] Đọc được 249 node ICB từ file JSON.
+2026-03-25 22:30:07 | INFO     | etl.transformers.listing:86 — [icb_industries] Sau transform (JSON): 249 ngành.
+2026-03-25 22:30:07 | INFO     | jobs.sync_listing:62 — [sync_listing] Đã xóa 155 ICB code cũ không còn trong JSON.
+2026-03-25 22:30:07 | INFO     | etl.loaders.postgres:119 — [icb_industries] Upserted 249 rows.
+2026-03-25 22:30:07 | SUCCESS  | jobs.sync_listing:73 — [sync_listing] icb_industries: 249 rows upserted (source: local JSON).
+2026-03-25 22:30:07 | INFO     | etl.extractors.listing:301 — [listing] Listing(vnd).all_symbols()...
+2026-03-25 22:30:09 | INFO     | etl.extractors.listing:305 — [listing] Lấy được 1981 mã chứng khoán.
+2026-03-25 22:30:09 | INFO     | etl.transformers.listing:154 — [companies] Sau transform: 1981 công ty.
+2026-03-25 22:30:09 | INFO     | etl.loaders.postgres:119 — [companies] Upserted 1981 rows.
+2026-03-25 22:30:09 | SUCCESS  | jobs.sync_listing:101 — [sync_listing] companies: 1981 rows upserted.
+2026-03-25 22:30:09 | INFO     | __main__:96 — Kết quả: {'icb_industries': {'status': 'success', 'records': 249}, 'companies': {'status': 'success', 'records': 1981}}
+2026-03-25 22:42:58 | INFO     | jobs.sync_listing:38 — [sync_listing] Đọc ICB từ file JSON cục bộ (không gọi vnstock API).
+2026-03-25 22:42:58 | INFO     | etl.extractors.listing:340 — [listing] Đọc ICB từ file JSON: C:\Users\PHONG\Desktop\data-pipeline\docs\icb-industries.json
+2026-03-25 22:42:58 | INFO     | etl.extractors.listing:391 — [listing] Đọc được 249 node ICB từ file JSON.
+2026-03-25 22:42:58 | INFO     | etl.transformers.listing:86 — [icb_industries] Sau transform (JSON): 249 ngành.
+2026-03-25 22:42:58 | INFO     | etl.loaders.postgres:119 — [icb_industries] Upserted 249 rows.
+2026-03-25 22:42:58 | SUCCESS  | jobs.sync_listing:73 — [sync_listing] icb_industries: 249 rows upserted (source: local JSON).
+2026-03-25 22:42:59 | INFO     | etl.extractors.listing:301 — [listing] Listing(vnd).all_symbols()...
+2026-03-25 22:43:00 | INFO     | etl.extractors.listing:305 — [listing] Lấy được 1981 mã chứng khoán.
+2026-03-25 22:43:01 | INFO     | etl.transformers.listing:154 — [companies] Sau transform: 1981 công ty.
+2026-03-25 22:43:01 | INFO     | etl.loaders.postgres:119 — [companies] Upserted 1981 rows.
+2026-03-25 22:43:01 | SUCCESS  | jobs.sync_listing:101 — [sync_listing] companies: 1981 rows upserted.
+2026-03-25 22:43:01 | INFO     | __main__:96 — Kết quả: {'icb_industries': {'status': 'success', 'records': 249}, 'companies': {'status': 'success', 'records': 1981}}

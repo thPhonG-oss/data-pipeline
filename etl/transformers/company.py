@@ -69,6 +69,7 @@ class CompanyTransformer(BaseTransformer):
             "officers":     self.transform_officers,
             "subsidiaries": self.transform_subsidiaries,
             "events":       self.transform_events,
+            "news":         self.transform_news,
         }
         if data_type not in dispatch:
             raise ValueError(f"data_type '{data_type}' không có transform DataFrame.")
@@ -81,9 +82,16 @@ class CompanyTransformer(BaseTransformer):
         Trả về dict chứa các trường cần UPDATE vào bảng companies.
         Tra cứu icb_code từ icb_name4.
         """
+        if df.empty:
+            logger.warning(f"[company] {symbol}: overview trống, bỏ qua update.")
+            return {}
         row = df.iloc[0]
         icb_name4 = row.get("icb_name4")
         icb_code = _lookup_icb_code(icb_name4)
+
+        def _str_or_none(val) -> str | None:
+            s = str(val).strip() if pd.notna(val) else None
+            return s if s else None
 
         result = {
             "symbol":          symbol,
@@ -91,6 +99,8 @@ class CompanyTransformer(BaseTransformer):
             "issue_share":     int(row["issue_share"]) if pd.notna(row.get("issue_share")) else None,
             "charter_capital": int(row["charter_capital"]) if pd.notna(row.get("charter_capital")) else None,
             "icb_code":        icb_code,
+            "history":         _str_or_none(row.get("history")),
+            "company_profile": _str_or_none(row.get("company_profile")),
         }
         logger.info(
             f"[company] {symbol} overview → icb_code={icb_code}, "
@@ -178,3 +188,47 @@ class CompanyTransformer(BaseTransformer):
         result = result.drop_duplicates(subset=["symbol", "event_list_code", "record_date"], keep="last")
         logger.info(f"[corporate_events] {symbol}: {len(result)} sự kiện sau transform.")
         return result.reset_index(drop=True)
+
+    # ── Company News ──────────────────────────────────────────────────────────
+
+    def transform_news(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        df = df.copy()
+        df["symbol"] = symbol
+
+        # Đổi tên để tránh từ khóa SQL và khớp schema
+        df = df.rename(columns={
+            "id":       "vci_id",
+            "floor":    "floor_price",
+            "ceiling":  "ceiling_price",
+        })
+
+        # public_date: Unix milliseconds → TIMESTAMPTZ (UTC)
+        if "public_date" in df.columns:
+            df["public_date"] = pd.to_datetime(
+                pd.to_numeric(df["public_date"], errors="coerce"),
+                unit="ms", utc=True,
+            )
+
+        # vci_id: đảm bảo là số nguyên
+        if "vci_id" in df.columns:
+            df["vci_id"] = pd.to_numeric(df["vci_id"], errors="coerce").astype("Int64")
+
+        # Giá → số nguyên
+        for col in ["close_price", "ref_price", "floor_price", "ceiling_price"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+
+        if "price_change_pct" in df.columns:
+            df["price_change_pct"] = pd.to_numeric(df["price_change_pct"], errors="coerce")
+
+        keep = [
+            "vci_id", "symbol", "news_title", "news_sub_title", "friendly_sub_title",
+            "news_id", "news_short_content", "news_full_content", "news_source_link",
+            "news_image_url", "lang_code", "public_date",
+            "close_price", "ref_price", "floor_price", "ceiling_price", "price_change_pct",
+        ]
+        keep = [c for c in keep if c in df.columns]
+        df = df[keep].dropna(subset=["vci_id"])
+        df = df.drop_duplicates(subset=["vci_id", "symbol"], keep="last")
+        logger.info(f"[company_news] {symbol}: {len(df)} bài sau transform.")
+        return df.reset_index(drop=True)

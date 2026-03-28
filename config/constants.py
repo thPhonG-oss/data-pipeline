@@ -18,8 +18,8 @@ VALID_INTERVALS = ["1D", "1W", "1M", "1", "5", "15", "30", "60"]
 # ── Kỳ báo cáo ───────────────────────────────────────────────────────────────
 VALID_PERIOD_TYPES = ["year", "quarter"]
 
-# ── Loại báo cáo tài chính ────────────────────────────────────────────────────
-FINANCIAL_REPORT_TYPES = ["balance_sheet", "income_statement", "cash_flow", "ratio"]
+# ── Loại báo cáo tài chính (lưu vào financial_reports) ───────────────────────
+FINANCIAL_REPORT_TYPES = ["balance_sheet", "income_statement", "cash_flow"]
 
 # ── Tên các job ETL ───────────────────────────────────────────────────────────
 JOB_SYNC_LISTING    = "sync_listing"
@@ -42,15 +42,13 @@ ALL_JOBS = [
 CONFLICT_KEYS: dict[str, list[str]] = {
     "icb_industries":    ["icb_code"],
     "companies":         ["symbol"],
-    "balance_sheets":    ["symbol", "period", "period_type"],
-    "income_statements": ["symbol", "period", "period_type"],
-    "cash_flows":        ["symbol", "period", "period_type"],
-    "financial_ratios":  ["symbol", "period", "period_type"],
+    "financial_reports": ["symbol", "period", "period_type", "statement_type"],
     "ratio_summary":     ["symbol", "year_report", "quarter_report"],
     "shareholders":      ["symbol", "share_holder", "snapshot_date"],
     "officers":          ["symbol", "officer_name", "status", "snapshot_date"],
     "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
     "corporate_events":  ["symbol", "event_list_code", "record_date"],
+    "company_news":      ["vci_id", "symbol"],
     "price_history":     ["symbol", "date", "source"],
     "price_intraday":    ["symbol", "time", "resolution"],
 }

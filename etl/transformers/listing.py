@@ -5,6 +5,11 @@ from config.constants import VALID_EXCHANGES, VALID_SECURITY_TYPES, VALID_STATUS
 from etl.base.transformer import BaseTransformer
 from utils.logger import logger
 
+# Suy ra level ICB từ độ dài icb_code (chuẩn FTSE Russell)
+_LEVEL_BY_CODE_LEN: dict[int, int] = {2: 1, 4: 2, 6: 3, 8: 4}
+# Số ký tự của parent tương ứng với từng level
+_PARENT_CODE_LEN: dict[int, int] = {4: 2, 6: 4, 8: 6}
+
 # Mapping type từ vnstock API sang DB constraint
 _TYPE_MAP: dict[str, str] = {
     "STOCK": "STOCK",
@@ -84,6 +89,70 @@ class ListingTransformer(BaseTransformer):
             logger.warning(f"[icb_industries] Bỏ {dropped} dòng thiếu dữ liệu bắt buộc.")
 
         logger.info(f"[icb_industries] Sau transform (JSON): {len(df)} ngành.")
+        return df.reset_index(drop=True)
+
+    def transform_icb_from_symbols(self, df_raw: pd.DataFrame) -> pd.DataFrame:
+        """
+        Trích xuất ICB codes từ raw DataFrame của all_symbols().
+        Dùng làm nguồn bổ sung sau khi đã upsert từ JSON (ON CONFLICT DO NOTHING).
+
+        - Level suy ra từ độ dài icb_code (2→1, 4→2, 6→3, 8→4).
+        - parent_code suy ra bằng cách cắt bớt digits cuối.
+        - icb_name lấy từ cột name nếu có, fallback về icb_code.
+
+        Returns empty DataFrame nếu all_symbols() không trả về cột icb_code.
+        """
+        _empty = pd.DataFrame(
+            columns=["icb_code", "icb_name", "en_icb_name", "level", "parent_code", "definition"]
+        )
+
+        # Tìm cột icb_code trong raw data (vnstock có thể dùng nhiều tên khác nhau)
+        icb_col = next(
+            (c for c in ["icb_code", "icbCode", "icb", "industry_code"] if c in df_raw.columns),
+            None,
+        )
+        if icb_col is None:
+            logger.debug("[icb_industries] all_symbols() không có cột icb_code — bỏ qua bổ sung.")
+            return _empty
+
+        # Tìm cột tên ICB nếu có
+        name_col = next(
+            (c for c in ["icb_name", "icbName", "industry_name"] if c in df_raw.columns),
+            None,
+        )
+
+        cols = [icb_col] + ([name_col] if name_col else [])
+        codes_df = (
+            df_raw[cols]
+            .copy()
+            .assign(**{icb_col: df_raw[icb_col].astype(str).str.strip()})
+            .query(f"{icb_col} != '' and {icb_col} != 'nan' and {icb_col} != 'None'")
+            .drop_duplicates(subset=[icb_col])
+        )
+
+        records = []
+        for _, row in codes_df.iterrows():
+            code = row[icb_col]
+            level = _LEVEL_BY_CODE_LEN.get(len(code))
+            if level is None:
+                continue  # bỏ qua code không đúng chuẩn ICB
+            parent_code = code[: _PARENT_CODE_LEN[len(code)]] if len(code) in _PARENT_CODE_LEN else None
+            name = str(row[name_col]).strip() if name_col and pd.notna(row.get(name_col)) else code
+            records.append({
+                "icb_code":    code,
+                "icb_name":    name,
+                "en_icb_name": None,
+                "level":       level,
+                "parent_code": parent_code,
+                "definition":  None,
+            })
+
+        if not records:
+            return _empty
+
+        df = pd.DataFrame(records)
+        df["level"] = pd.to_numeric(df["level"], errors="coerce").astype("Int64")
+        logger.info(f"[icb_industries] Tìm thấy {len(df)} ICB codes từ all_symbols().")
         return df.reset_index(drop=True)
 
     def transform_symbols(self, df: pd.DataFrame) -> pd.DataFrame:

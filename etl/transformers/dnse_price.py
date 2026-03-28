@@ -34,9 +34,9 @@ def _to_int(val, scale: int = 1) -> int | None:
         return None
 
 
-class DNSEPriceTransformer(BaseTransformer):
+class KBSPriceTransformer(BaseTransformer):
     """
-    Chuyển DataFrame từ DNSEPriceExtractor → schema price_history.
+    Chuyển DataFrame từ KBSPriceExtractor → schema price_history.
 
     Column mapping (vnstock DNSE → price_history):
       time   → date

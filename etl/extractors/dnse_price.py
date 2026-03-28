@@ -17,12 +17,8 @@ from utils.logger import logger
 _YEARS_DEFAULT = 5   # Số năm lấy khi chưa có dữ liệu trong DB
 
 
-class DNSEPriceExtractor(BaseExtractor):
-    """
-    Lấy giá lịch sử OHLCV từ KBS qua vnstock.
-    Giữ tên class DNSEPriceExtractor để không đổi interface với sync_prices.
-    source thực tế = 'kbs'.
-    """
+class KBSPriceExtractor(BaseExtractor):
+    """Lấy giá lịch sử OHLCV từ KBS (KB Securities) qua vnstock Quote(source='kbs')."""
 
     def __init__(self) -> None:
         super().__init__(source="kbs")

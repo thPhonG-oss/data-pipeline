@@ -1,10 +1,10 @@
-"""Job đồng bộ giá lịch sử OHLCV — DNSE primary, VNDirect fallback.
+"""Job đồng bộ giá lịch sử OHLCV — KBS primary, VNDirect fallback.
 
 Luồng xử lý cho mỗi symbol:
   1. Query MAX(date) trong price_history từ DB (incremental sync)
   2. Nếu có: chỉ fetch từ ngày cuối+1 đến hôm nay
   3. Nếu chưa có (lần đầu): fetch 5 năm lịch sử
-  4. Thử DNSE trước → nếu lỗi tự động fallback sang VNDirect
+  4. Thử KBS trước → nếu lỗi tự động fallback sang VNDirect
 """
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,10 +15,10 @@ from sqlalchemy import text
 from config.constants import CONFLICT_KEYS, JOB_SYNC_PRICES
 from config.settings import settings
 from db.connection import engine
-from etl.extractors.dnse_price import DNSEPriceExtractor
+from etl.extractors.dnse_price import KBSPriceExtractor
 from etl.extractors.vndirect_price import VNDirectPriceExtractor
 from etl.loaders.postgres import PostgresLoader
-from etl.transformers.dnse_price import DNSEPriceTransformer
+from etl.transformers.dnse_price import KBSPriceTransformer
 from etl.transformers.vndirect_price import VNDirectPriceTransformer
 from utils.logger import logger
 
@@ -52,8 +52,8 @@ def _get_last_date(symbol: str) -> date | None:
 
 def _run_one(
     symbol: str,
-    dnse_ext: DNSEPriceExtractor,
-    dnse_tx: DNSEPriceTransformer,
+    kbs_ext: KBSPriceExtractor,
+    kbs_tx: KBSPriceTransformer,
     vnd_ext: VNDirectPriceExtractor,
     vnd_tx: VNDirectPriceTransformer,
     loader: PostgresLoader,
@@ -84,11 +84,11 @@ def _run_one(
         source_used = "kbs"
         df_raw = None
         try:
-            df_raw = dnse_ext.extract_price_history(symbol, start=start, end=today)
+            df_raw = kbs_ext.extract_price_history(symbol, start=start, end=today)
             time.sleep(settings.request_delay)
-        except Exception as dnse_exc:
+        except Exception as kbs_exc:
             logger.warning(
-                f"[sync_prices] {symbol}: KBS lỗi ({dnse_exc}), "
+                f"[sync_prices] {symbol}: KBS lỗi ({kbs_exc}), "
                 "chuyển sang VNDirect fallback."
             )
             source_used = "vndirect"
@@ -113,7 +113,7 @@ def _run_one(
 
         # Transform
         if source_used == "kbs":
-            df = dnse_tx.transform(df_raw, symbol)
+            df = kbs_tx.transform(df_raw, symbol)
         else:
             df = vnd_tx.transform(df_raw, symbol)
 
@@ -163,8 +163,8 @@ def run(
         f"{max_workers} luồng, full_history={full_history}."
     )
 
-    dnse_ext = DNSEPriceExtractor()
-    dnse_tx  = DNSEPriceTransformer()
+    kbs_ext  = KBSPriceExtractor()
+    kbs_tx   = KBSPriceTransformer()
     vnd_ext  = VNDirectPriceExtractor()
     vnd_tx   = VNDirectPriceTransformer()
     loader   = PostgresLoader()
@@ -175,7 +175,7 @@ def run(
         futures = {
             pool.submit(
                 _run_one, sym,
-                dnse_ext, dnse_tx,
+                kbs_ext, kbs_tx,
                 vnd_ext, vnd_tx,
                 loader, full_history,
             ): sym

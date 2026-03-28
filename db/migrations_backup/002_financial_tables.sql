@@ -1,0 +1,19 @@
+-- ============================================================
+-- Migration 002: Bảng báo cáo tài chính (Financial Statements)
+--
+-- DEPRECATED — Thay thế bởi migration 014_financial_reports.sql
+--
+-- Các bảng balance_sheets, income_statements, cash_flows, financial_ratios
+-- đã được hợp nhất vào bảng thống nhất financial_reports với kiến trúc
+-- Hybrid JSONB (typed NUMERIC columns + raw_details JSONB).
+--
+-- Lý do thay thế:
+--   - 4 bảng riêng không hỗ trợ đa template (Phi tài chính / Ngân hàng /
+--     Chứng khoán / Bảo hiểm) với ngữ nghĩa NULL/0 chính xác.
+--   - Screener query phải JOIN 4 bảng, gây overhead không cần thiết.
+--   - raw_data JSONB trong bảng cũ không phân biệt tên cột tiếng Việt
+--     giữa các mẫu biểu khác nhau.
+--
+-- Migration 015_drop_old_financial_tables.sql thực hiện DROP các bảng này.
+-- ============================================================
+SELECT 1; -- no-op: file deprecated, kept for migration history

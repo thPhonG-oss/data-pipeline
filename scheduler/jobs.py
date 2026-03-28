@@ -1,9 +1,15 @@
 """Đăng ký và cấu hình tất cả APScheduler jobs."""
+import threading
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from config.settings import settings
 from utils.logger import logger
+
+# ── Realtime pipeline state ────────────────────────────────────────────────────
+_subscriber_instance = None
+_subscriber_thread: threading.Thread | None = None
 
 
 def _safe_run(job_fn, job_name: str):
@@ -18,18 +24,70 @@ def _safe_run(job_fn, job_name: str):
     return wrapper
 
 
+def _start_realtime_subscriber() -> None:
+    """Khởi động MQTT subscriber trong background thread."""
+    global _subscriber_instance, _subscriber_thread
+
+    if _subscriber_thread and _subscriber_thread.is_alive():
+        logger.info("[scheduler] Realtime subscriber đang chạy — bỏ qua.")
+        return
+
+    try:
+        from realtime.subscriber import MQTTSubscriber
+        _subscriber_instance = MQTTSubscriber()
+        _subscriber_thread = threading.Thread(
+            target=_subscriber_instance.run,
+            daemon=True,
+            name="realtime-subscriber",
+        )
+        _subscriber_thread.start()
+        logger.info("[scheduler] Realtime subscriber đã khởi động.")
+    except Exception as exc:
+        logger.error(f"[scheduler] Không thể khởi động realtime subscriber: {exc}")
+
+
+def _stop_realtime_subscriber() -> None:
+    """Dừng MQTT subscriber sau giờ giao dịch."""
+    global _subscriber_instance
+    if _subscriber_instance is None:
+        return
+    try:
+        _subscriber_instance._running = False
+        if _subscriber_instance._client:
+            _subscriber_instance._client.disconnect()
+        logger.info("[scheduler] Realtime subscriber đã dừng.")
+    except Exception as exc:
+        logger.error(f"[scheduler] Lỗi khi dừng subscriber: {exc}")
+    finally:
+        _subscriber_instance = None
+
+
+def _start_realtime_processor() -> None:
+    """Khởi động stream processor trong background daemon thread."""
+    try:
+        from realtime.processor import StreamProcessor
+        proc = StreamProcessor()
+        t = threading.Thread(target=proc.run, daemon=True, name="realtime-processor")
+        t.start()
+        logger.info("[scheduler] Realtime processor đã khởi động.")
+    except Exception as exc:
+        logger.error(f"[scheduler] Không thể khởi động realtime processor: {exc}")
+
+
 def build_scheduler() -> BlockingScheduler:
     """
-    Tạo và cấu hình BlockingScheduler với 5 jobs theo lịch:
+    Tạo và cấu hình BlockingScheduler với tất cả jobs theo lịch:
 
-    | Job              | Lịch                          |
-    |------------------|-------------------------------|
-    | sync_listing     | Chủ Nhật 01:00                |
-    | sync_financials  | Ngày 1 và 15 hàng tháng 03:00 |
-    | sync_company     | Thứ Hai 02:00                 |
-    | sync_ratios      | Hàng ngày 18:30               |
-    | sync_prices      | Thứ 2–6 lúc 19:00             |
-    | alert_check      | Hàng giờ :00                  |
+    | Job                      | Lịch                          |
+    |--------------------------|-------------------------------|
+    | sync_listing             | Chủ Nhật 01:00                |
+    | sync_financials          | Ngày 1 và 15 hàng tháng 03:00 |
+    | sync_company             | Thứ Hai 02:00                 |
+    | sync_ratios              | Hàng ngày 18:30               |
+    | sync_prices              | Thứ 2–6 lúc 19:00             |
+    | alert_check              | Hàng giờ :00                  |
+    | realtime_subscriber_start| Thứ 2–6 lúc 07:00 (nếu bật)  |
+    | realtime_subscriber_stop | Thứ 2–6 lúc 15:15 (nếu bật)  |
     """
     # Import lazy để tránh circular import và chỉ load khi scheduler thực sự chạy
     import jobs.sync_listing    as listing_job
@@ -88,5 +146,33 @@ def build_scheduler() -> BlockingScheduler:
         name="Kiểm tra pipeline_logs, gửi alert Telegram nếu có sự cố",
         misfire_grace_time=300,    # Bỏ qua nếu trễ hơn 5 phút
     )
+
+    # ── Realtime pipeline (subscriber start/stop + processor always-on) ───────
+    if settings.realtime_enabled:
+        # Processor chạy 24/7 ngay khi scheduler boot
+        _start_realtime_processor()
+
+        scheduler.add_job(
+            _start_realtime_subscriber,
+            CronTrigger.from_crontab(settings.cron_realtime_start, timezone="Asia/Ho_Chi_Minh"),
+            id="realtime_subscriber_start",
+            name="Khởi động MQTT subscriber (trước ATO)",
+            misfire_grace_time=1800,
+        )
+
+        scheduler.add_job(
+            _stop_realtime_subscriber,
+            CronTrigger.from_crontab(settings.cron_realtime_stop, timezone="Asia/Ho_Chi_Minh"),
+            id="realtime_subscriber_stop",
+            name="Dừng MQTT subscriber (sau ATC)",
+            misfire_grace_time=1800,
+        )
+
+        logger.info(
+            f"[scheduler] Realtime pipeline: bật. "
+            f"Subscriber: {settings.cron_realtime_start} → {settings.cron_realtime_stop}"
+        )
+    else:
+        logger.info("[scheduler] Realtime pipeline: tắt (REALTIME_ENABLED=false).")
 
     return scheduler
