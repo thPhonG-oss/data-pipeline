@@ -1,9 +1,10 @@
 """Tiện ích xử lý chuỗi period cho pipeline."""
+
 import re
 from typing import Optional
 
 
-def to_period(year: int, quarter: Optional[int] = None) -> str:
+def to_period(year: int, quarter: int | None = None) -> str:
     """
     Chuyển năm/quý thành chuỗi period.
     Ví dụ: (2024, 1) → '2024Q1',  (2024, None) → '2024'
@@ -13,7 +14,7 @@ def to_period(year: int, quarter: Optional[int] = None) -> str:
     return str(year)
 
 
-def parse_period(period: str) -> tuple[int, Optional[int]]:
+def parse_period(period: str) -> tuple[int, int | None]:
     """
     Parse chuỗi period thành (year, quarter).
     Ví dụ: '2024Q1' → (2024, 1),  '2024' → (2024, None)
@@ -21,8 +22,7 @@ def parse_period(period: str) -> tuple[int, Optional[int]]:
     match = re.fullmatch(r"(\d{4})(?:Q([1-4]))?", period.strip())
     if not match:
         raise ValueError(
-            f"Định dạng period không hợp lệ: '{period}'. "
-            "Mong đợi '2024' hoặc '2024Q1'."
+            f"Định dạng period không hợp lệ: '{period}'. Mong đợi '2024' hoặc '2024Q1'."
         )
     year = int(match.group(1))
     quarter = int(match.group(2)) if match.group(2) else None

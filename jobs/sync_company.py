@@ -1,4 +1,5 @@
 """Job đồng bộ thông tin doanh nghiệp: cổ đông, lãnh đạo, công ty con, sự kiện."""
+
 import argparse
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,13 +15,14 @@ from etl.transformers.company import CompanyTransformer
 from utils.logger import logger
 
 # Các loại dữ liệu cần sync — overview xử lý riêng (UPDATE companies, không upsert)
-_DATA_TYPES = ["shareholders", "officers", "subsidiaries", "events"]
+_DATA_TYPES = ["shareholders", "officers", "subsidiaries", "events", "news"]
 
 _TABLE_MAP = {
     "shareholders": "shareholders",
-    "officers":     "officers",
+    "officers": "officers",
     "subsidiaries": "subsidiaries",
-    "events":       "corporate_events",
+    "events": "corporate_events",
+    "news": "company_news",
 }
 
 
@@ -28,13 +30,16 @@ def _get_listed_symbols() -> list[str]:
     """Lấy danh sách mã cổ phiếu đang niêm yết từ bảng companies."""
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT symbol FROM companies WHERE status = 'listed' AND type = 'STOCK' ORDER BY symbol")
+            text(
+                "SELECT symbol FROM companies WHERE status = 'listed' AND type = 'STOCK' ORDER BY symbol"
+            )
         ).fetchall()
     return [r[0] for r in rows]
 
 
-def _update_companies_overview(symbol: str, extractor: CompanyExtractor,
-                                transformer: CompanyTransformer) -> bool:
+def _update_companies_overview(
+    symbol: str, extractor: CompanyExtractor, transformer: CompanyTransformer
+) -> bool:
     """
     Lấy overview và UPDATE trực tiếp vào bảng companies.
     Trả về True nếu thành công.
@@ -44,6 +49,9 @@ def _update_companies_overview(symbol: str, extractor: CompanyExtractor,
         time.sleep(settings.request_delay)
         data = transformer.transform_overview(df_raw, symbol)
 
+        if not data:
+            return True
+
         with engine.begin() as conn:
             conn.execute(
                 text("""
@@ -52,6 +60,8 @@ def _update_companies_overview(symbol: str, extractor: CompanyExtractor,
                         issue_share     = :issue_share,
                         charter_capital = :charter_capital,
                         icb_code        = COALESCE(:icb_code, icb_code),
+                        history         = COALESCE(:history, history),
+                        company_profile = COALESCE(:company_profile, company_profile),
                         updated_at      = NOW()
                     WHERE symbol = :symbol
                 """),
@@ -78,26 +88,38 @@ def _run_one(
         time.sleep(settings.request_delay)
 
         if df_raw.empty:
-            loader.load_log(job_name=JOB_SYNC_COMPANY, symbol=symbol,
-                            status="skipped", log_id=log_id)
+            loader.load_log(
+                job_name=JOB_SYNC_COMPANY, symbol=symbol, status="skipped", log_id=log_id
+            )
             return {"symbol": symbol, "data_type": data_type, "status": "skipped", "rows": 0}
 
         df = transformer.transform(df_raw, symbol, data_type=data_type)
         if df.empty:
-            loader.load_log(job_name=JOB_SYNC_COMPANY, symbol=symbol,
-                            status="skipped", log_id=log_id)
+            loader.load_log(
+                job_name=JOB_SYNC_COMPANY, symbol=symbol, status="skipped", log_id=log_id
+            )
             return {"symbol": symbol, "data_type": data_type, "status": "skipped", "rows": 0}
 
         rows = loader.load(df, table, CONFLICT_KEYS[table])
-        loader.load_log(job_name=JOB_SYNC_COMPANY, symbol=symbol,
-                        status="success", records_fetched=len(df),
-                        records_inserted=rows, log_id=log_id)
+        loader.load_log(
+            job_name=JOB_SYNC_COMPANY,
+            symbol=symbol,
+            status="success",
+            records_fetched=len(df),
+            records_inserted=rows,
+            log_id=log_id,
+        )
         return {"symbol": symbol, "data_type": data_type, "status": "success", "rows": rows}
 
     except Exception as exc:
         logger.exception(f"[sync_company] {symbol}/{data_type} lỗi: {exc}")
-        loader.load_log(job_name=JOB_SYNC_COMPANY, symbol=symbol,
-                        status="failed", error_message=str(exc)[:500], log_id=log_id)
+        loader.load_log(
+            job_name=JOB_SYNC_COMPANY,
+            symbol=symbol,
+            status="failed",
+            error_message=str(exc)[:500],
+            log_id=log_id,
+        )
         return {"symbol": symbol, "data_type": data_type, "status": "failed", "rows": 0}
 
 
@@ -167,20 +189,27 @@ def run(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Đồng bộ thông tin doanh nghiệp.")
     parser.add_argument(
-        "--symbols", nargs="+", default=None,
+        "--symbols",
+        nargs="+",
+        default=None,
         help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.",
     )
     parser.add_argument(
-        "--data-types", nargs="+", default=None,
+        "--data-types",
+        nargs="+",
+        default=None,
         choices=_DATA_TYPES,
-        help="Loại dữ liệu. Mặc định: tất cả 4 loại.",
+        help="Loại dữ liệu. Mặc định: tất cả 5 loại.",
     )
     parser.add_argument(
-        "--workers", type=int, default=None,
+        "--workers",
+        type=int,
+        default=None,
         help="Số luồng song song. Mặc định: settings.max_workers.",
     )
     parser.add_argument(
-        "--no-overview", action="store_true",
+        "--no-overview",
+        action="store_true",
         help="Bỏ qua bước UPDATE icb_code/charter_capital/issue_share trong companies.",
     )
     args = parser.parse_args()

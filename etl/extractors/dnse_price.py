@@ -7,6 +7,7 @@ chưa có trong vnstock 3.5.0 (chỉ có fmp, kbs, msn, vci).
 
 Đơn vị giá KBS: nghìn VND → transformer cần nhân ×1000.
 """
+
 from datetime import date
 
 import pandas as pd
@@ -14,15 +15,11 @@ import pandas as pd
 from etl.base.extractor import BaseExtractor
 from utils.logger import logger
 
-_YEARS_DEFAULT = 5   # Số năm lấy khi chưa có dữ liệu trong DB
+_YEARS_DEFAULT = 5  # Số năm lấy khi chưa có dữ liệu trong DB
 
 
-class DNSEPriceExtractor(BaseExtractor):
-    """
-    Lấy giá lịch sử OHLCV từ KBS qua vnstock.
-    Giữ tên class DNSEPriceExtractor để không đổi interface với sync_prices.
-    source thực tế = 'kbs'.
-    """
+class KBSPriceExtractor(BaseExtractor):
+    """Lấy giá lịch sử OHLCV từ KBS (KB Securities) qua vnstock Quote(source='kbs')."""
 
     def __init__(self) -> None:
         super().__init__(source="kbs")
@@ -55,6 +52,7 @@ class DNSEPriceExtractor(BaseExtractor):
 
         try:
             from vnstock import Quote
+
             df = Quote(source="kbs", symbol=symbol.upper()).history(
                 start=str(start),
                 end=str(end),

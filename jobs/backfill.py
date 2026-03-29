@@ -1,4 +1,5 @@
 """Backfill job — chạy lại lịch sử cho một hoặc nhiều mã cụ thể."""
+
 from config.constants import FINANCIAL_REPORT_TYPES
 from jobs.sync_financials import run
 from utils.logger import logger
@@ -30,16 +31,22 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Backfill tài chính cho mã chứng khoán.")
     parser.add_argument(
-        "--symbols", nargs="+", required=True,
+        "--symbols",
+        nargs="+",
+        required=True,
         help="Danh sách mã chứng khoán, ví dụ: HPG FPT VCB",
     )
     parser.add_argument(
-        "--report-types", nargs="+", default=None,
+        "--report-types",
+        nargs="+",
+        default=None,
         choices=FINANCIAL_REPORT_TYPES,
         help="Loại báo cáo cần backfill. Mặc định: tất cả 4 loại.",
     )
     parser.add_argument(
-        "--workers", type=int, default=3,
+        "--workers",
+        type=int,
+        default=3,
         help="Số luồng song song (mặc định: 3).",
     )
     args = parser.parse_args()

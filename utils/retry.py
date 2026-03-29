@@ -1,13 +1,14 @@
 """Decorator retry dùng tenacity, tuân theo cấu hình trong settings."""
+
 import functools
-from typing import Callable, Type
+from collections.abc import Callable
 
 from tenacity import (
+    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    before_sleep_log,
 )
 
 from utils.logger import logger
@@ -17,7 +18,7 @@ def vnstock_retry(
     attempts: int | None = None,
     wait_min: float | None = None,
     wait_max: float | None = None,
-    exceptions: tuple[Type[Exception], ...] = (Exception,),
+    exceptions: tuple[type[Exception], ...] = (Exception,),
 ) -> Callable:
     """
     Decorator retry cho vnstock API calls với exponential backoff.

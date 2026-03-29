@@ -1,6 +1,8 @@
 """Hàm tiện ích dùng chung cho các loaders."""
+
 import math
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -27,13 +29,17 @@ def sanitize_for_postgres(df: pd.DataFrame) -> pd.DataFrame:
         # pd.isna() xử lý cả float NaN lẫn pd.NA (pandas nullable Int64)
         # .astype(object) ngăn pandas tự động chuyển None → NaN khi gán lại vào DataFrame
         if pd.api.types.is_integer_dtype(df[col]):
-            df[col] = df[col].apply(
-                lambda x: int(x) if x is not None and not pd.isna(x) else None
-            ).astype(object)
+            df[col] = (
+                df[col]
+                .apply(lambda x: int(x) if x is not None and not pd.isna(x) else None)
+                .astype(object)
+            )
         elif pd.api.types.is_float_dtype(df[col]):
-            df[col] = df[col].apply(
-                lambda x: float(x) if (x is not None and not math.isnan(x)) else None
-            ).astype(object)
+            df[col] = (
+                df[col]
+                .apply(lambda x: float(x) if (x is not None and not math.isnan(x)) else None)
+                .astype(object)
+            )
 
     return df
 
@@ -50,9 +56,7 @@ def df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     return records
 
 
-def chunk_dataframe(
-    df: pd.DataFrame, chunk_size: int
-) -> Generator[pd.DataFrame, None, None]:
+def chunk_dataframe(df: pd.DataFrame, chunk_size: int) -> Generator[pd.DataFrame, None, None]:
     """Chia DataFrame thành các chunk nhỏ để bulk insert."""
     for start in range(0, len(df), chunk_size):
         yield df.iloc[start : start + chunk_size]

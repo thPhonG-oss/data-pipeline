@@ -6,6 +6,7 @@ Public API — không cần authentication. Ổn định từ 2019.
 Đơn vị giá trả về: nghìn VND (×1000 để ra VND nguyên khi lưu DB).
 Có adClose (adjusted close) — ưu điểm so với DNSE.
 """
+
 from datetime import date
 
 import pandas as pd
@@ -15,11 +16,11 @@ from etl.base.extractor import BaseExtractor
 from utils.logger import logger
 from utils.retry import vnstock_retry
 
-_BASE_URL  = "https://finfo-api.vndirect.com.vn"
-_HEADERS   = {
-    "Accept":     "application/json",
+_BASE_URL = "https://finfo-api.vndirect.com.vn"
+_HEADERS = {
+    "Accept": "application/json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Referer":    "https://www.vndirect.com.vn/",
+    "Referer": "https://www.vndirect.com.vn/",
 }
 _PAGE_SIZE = 500
 
@@ -81,10 +82,10 @@ class VNDirectPriceExtractor(BaseExtractor):
     @vnstock_retry()
     def _fetch_page(self, symbol: str, start: date, end: date, page: int) -> list[dict]:
         params = {
-            "sort":  "date",
-            "size":  _PAGE_SIZE,
-            "page":  page,
-            "q":     f"code:{symbol.upper()}~date:gte:{start}~date:lte:{end}",
+            "sort": "date",
+            "size": _PAGE_SIZE,
+            "page": page,
+            "q": f"code:{symbol.upper()}~date:gte:{start}~date:lte:{end}",
         }
         resp = requests.get(
             f"{_BASE_URL}/v4/stock_prices/",

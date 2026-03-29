@@ -1,5 +1,5 @@
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -26,8 +26,10 @@ def _mock_me_response(investor_id=999):
 
 
 def test_get_token_fetches_and_caches(auth):
-    with patch("realtime.auth.requests.post", return_value=_mock_auth_response()) as mock_post, \
-         patch("realtime.auth.requests.get", return_value=_mock_me_response()):
+    with (
+        patch("realtime.auth.requests.post", return_value=_mock_auth_response()) as mock_post,
+        patch("realtime.auth.requests.get", return_value=_mock_me_response()),
+    ):
         token = auth.get_token()
         assert token == "tok123"
         # Second call must NOT make another HTTP request
@@ -36,8 +38,10 @@ def test_get_token_fetches_and_caches(auth):
 
 
 def test_get_investor_id_cached(auth):
-    with patch("realtime.auth.requests.post", return_value=_mock_auth_response()), \
-         patch("realtime.auth.requests.get", return_value=_mock_me_response(42)) as mock_get:
+    with (
+        patch("realtime.auth.requests.post", return_value=_mock_auth_response()),
+        patch("realtime.auth.requests.get", return_value=_mock_me_response(42)) as mock_get,
+    ):
         investor_id = auth.get_investor_id()
         assert investor_id == "42"
         auth.get_investor_id()
@@ -45,12 +49,16 @@ def test_get_investor_id_cached(auth):
 
 
 def test_token_refreshed_when_near_expiry(auth):
-    with patch("realtime.auth.requests.post", return_value=_mock_auth_response("new_tok")) as mock_post, \
-         patch("realtime.auth.requests.get", return_value=_mock_me_response()):
+    with (
+        patch(
+            "realtime.auth.requests.post", return_value=_mock_auth_response("new_tok")
+        ) as mock_post,
+        patch("realtime.auth.requests.get", return_value=_mock_me_response()),
+    ):
         # Simulate token fetched 7.5h ago (within 1h expiry window of 8h token)
         auth._token = "old_tok"
         auth._investor_id = "1"
-        auth._token_fetched_at = datetime.now(tz=timezone.utc) - timedelta(hours=7, minutes=30)
+        auth._token_fetched_at = datetime.now(tz=UTC) - timedelta(hours=7, minutes=30)
 
         token = auth.get_token()
         assert token == "new_tok"

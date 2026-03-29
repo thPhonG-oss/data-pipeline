@@ -12,6 +12,7 @@ Vòng lặp sống:
   5. Khi disconnect → backoff reconnect
   6. Refresh JWT mỗi 7h
 """
+
 import json
 import signal
 import ssl
@@ -27,16 +28,16 @@ from realtime.auth import DNSEAuthManager
 from realtime.watchlist import WatchlistManager
 from utils.logger import logger
 
-_BROKER_HOST   = "datafeed-lts-krx.dnse.com.vn"
-_BROKER_PORT   = 443
-_KEEPALIVE     = 1200
-_QOS           = 1
+_BROKER_HOST = "datafeed-lts-krx.dnse.com.vn"
+_BROKER_PORT = 443
+_KEEPALIVE = 1200
+_QOS = 1
 _TOPIC_PATTERN = "plaintext/quotes/krx/mdds/v2/ohlc/stock/{resolution}/{symbol}"
 
 _STREAM_MAP = {1: "stream:ohlc:1m", 5: "stream:ohlc:5m"}
 _STREAM_MAXLEN = 500_000
 
-_JWT_REFRESH_INTERVAL = 7 * 3600   # seconds
+_JWT_REFRESH_INTERVAL = 7 * 3600  # seconds
 
 _BACKOFF = [1, 5, 30, 300]
 
@@ -48,12 +49,18 @@ class MQTTSubscriber:
     """
 
     def __init__(self) -> None:
-        self._auth      = DNSEAuthManager(username=settings.dnse_username, password=settings.dnse_password)
+        self._auth = DNSEAuthManager(
+            username=settings.dnse_username, password=settings.dnse_password
+        )
         self._watchlist = WatchlistManager(watchlist_str=settings.realtime_watchlist)
-        self._resolutions = [int(r.strip()) for r in settings.realtime_resolutions.split(",") if r.strip()]
-        self._redis     = redis_lib.Redis(host=settings.redis_host, port=settings.redis_port, decode_responses=True)
+        self._resolutions = [
+            int(r.strip()) for r in settings.realtime_resolutions.split(",") if r.strip()
+        ]
+        self._redis = redis_lib.Redis(
+            host=settings.redis_host, port=settings.redis_port, decode_responses=True
+        )
         self._client: mqtt.Client | None = None
-        self._running   = False
+        self._running = False
         self._connected = False
 
     # ── Public ────────────────────────────────────────────────────────────
@@ -62,7 +69,7 @@ class MQTTSubscriber:
         """Vòng lặp chính — chạy đến khi nhận SIGTERM/SIGINT."""
         self._running = True
         signal.signal(signal.SIGTERM, self._shutdown)
-        signal.signal(signal.SIGINT,  self._shutdown)
+        signal.signal(signal.SIGINT, self._shutdown)
 
         self._schedule_jwt_refresh()
         backoff_idx = 0
@@ -82,9 +89,9 @@ class MQTTSubscriber:
     # ── MQTT lifecycle ────────────────────────────────────────────────────
 
     def _connect_and_loop(self) -> None:
-        token       = self._auth.get_token()
+        token = self._auth.get_token()
         investor_id = self._auth.get_investor_id()
-        client_id   = f"dnse-ohlc-sub-{uuid.uuid4().hex[:8]}"
+        client_id = f"dnse-ohlc-sub-{uuid.uuid4().hex[:8]}"
 
         client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
@@ -97,9 +104,9 @@ class MQTTSubscriber:
         client.tls_insecure_set(True)
         client.ws_set_options(path="/wss")
 
-        client.on_connect    = self._on_connect
+        client.on_connect = self._on_connect
         client.on_disconnect = self._on_disconnect
-        client.on_message    = self._on_message
+        client.on_message = self._on_message
 
         self._client = client
         logger.info(f"[subscriber] Kết nối MQTT broker ({_BROKER_HOST}:{_BROKER_PORT})...")
@@ -114,7 +121,9 @@ class MQTTSubscriber:
         else:
             logger.error(f"[subscriber] Kết nối MQTT thất bại — {reason_code}")
 
-    def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None) -> None:
+    def _on_disconnect(
+        self, client, userdata, disconnect_flags, reason_code, properties=None
+    ) -> None:
         self._connected = False
         if self._running:
             logger.warning(f"[subscriber] Mất kết nối MQTT ({reason_code}). Sẽ reconnect...")
@@ -151,7 +160,9 @@ class MQTTSubscriber:
 
         if topics:
             client.subscribe(topics)
-            logger.info(f"[subscriber] Subscribed {len(topics)} topics ({len(symbols)} symbols × {len(self._resolutions)} timeframes).")
+            logger.info(
+                f"[subscriber] Subscribed {len(topics)} topics ({len(symbols)} symbols × {len(self._resolutions)} timeframes)."
+            )
 
     # ── JWT auto-refresh ─────────────────────────────────────────────────
 
@@ -178,8 +189,9 @@ class MQTTSubscriber:
 
 
 if __name__ == "__main__":
-    from realtime.session_guard import is_trading_hours
     import sys
+
+    from realtime.session_guard import is_trading_hours
 
     if not is_trading_hours():
         logger.info("[subscriber] Ngoài giờ giao dịch — không khởi động.")

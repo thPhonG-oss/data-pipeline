@@ -1,4 +1,5 @@
 """Gửi cảnh báo qua Telegram khi pipeline gặp sự cố."""
+
 import requests
 
 from utils.logger import logger

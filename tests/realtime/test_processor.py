@@ -3,7 +3,6 @@ import pytest
 
 from realtime.processor import _transform_message, _validate_message
 
-
 _VALID_MSG = {
     "symbol": "HPG",
     "time": "2026-03-21T09:01:00+07:00",
@@ -40,7 +39,7 @@ def test_validate_rejects_missing_field():
 
 
 def test_validate_rejects_non_numeric_resolution():
-    msg = {**_VALID_MSG, "resolution": "1H"}   # 1H not supported
+    msg = {**_VALID_MSG, "resolution": "1H"}  # 1H not supported
     assert _validate_message(msg) is False
 
 

@@ -1,11 +1,12 @@
-"""Job đồng bộ giá lịch sử OHLCV — DNSE primary, VNDirect fallback.
+"""Job đồng bộ giá lịch sử OHLCV — KBS primary, VNDirect fallback.
 
 Luồng xử lý cho mỗi symbol:
   1. Query MAX(date) trong price_history từ DB (incremental sync)
   2. Nếu có: chỉ fetch từ ngày cuối+1 đến hôm nay
   3. Nếu chưa có (lần đầu): fetch 5 năm lịch sử
-  4. Thử DNSE trước → nếu lỗi tự động fallback sang VNDirect
+  4. Thử KBS trước → nếu lỗi tự động fallback sang VNDirect
 """
+
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -15,10 +16,10 @@ from sqlalchemy import text
 from config.constants import CONFLICT_KEYS, JOB_SYNC_PRICES
 from config.settings import settings
 from db.connection import engine
-from etl.extractors.dnse_price import DNSEPriceExtractor
+from etl.extractors.dnse_price import KBSPriceExtractor
 from etl.extractors.vndirect_price import VNDirectPriceExtractor
 from etl.loaders.postgres import PostgresLoader
-from etl.transformers.dnse_price import DNSEPriceTransformer
+from etl.transformers.dnse_price import KBSPriceTransformer
 from etl.transformers.vndirect_price import VNDirectPriceTransformer
 from utils.logger import logger
 
@@ -52,8 +53,8 @@ def _get_last_date(symbol: str) -> date | None:
 
 def _run_one(
     symbol: str,
-    dnse_ext: DNSEPriceExtractor,
-    dnse_tx: DNSEPriceTransformer,
+    kbs_ext: KBSPriceExtractor,
+    kbs_tx: KBSPriceTransformer,
     vnd_ext: VNDirectPriceExtractor,
     vnd_tx: VNDirectPriceTransformer,
     loader: PostgresLoader,
@@ -73,8 +74,10 @@ def _run_one(
                 start = last + timedelta(days=1)
                 if start > today:
                     loader.load_log(
-                        job_name=JOB_SYNC_PRICES, symbol=symbol,
-                        status="skipped", log_id=log_id,
+                        job_name=JOB_SYNC_PRICES,
+                        symbol=symbol,
+                        status="skipped",
+                        log_id=log_id,
                     )
                     return {"symbol": symbol, "status": "skipped", "rows": 0, "source": "none"}
             else:
@@ -84,12 +87,11 @@ def _run_one(
         source_used = "kbs"
         df_raw = None
         try:
-            df_raw = dnse_ext.extract_price_history(symbol, start=start, end=today)
+            df_raw = kbs_ext.extract_price_history(symbol, start=start, end=today)
             time.sleep(settings.request_delay)
-        except Exception as dnse_exc:
+        except Exception as kbs_exc:
             logger.warning(
-                f"[sync_prices] {symbol}: KBS lỗi ({dnse_exc}), "
-                "chuyển sang VNDirect fallback."
+                f"[sync_prices] {symbol}: KBS lỗi ({kbs_exc}), chuyển sang VNDirect fallback."
             )
             source_used = "vndirect"
 
@@ -106,38 +108,48 @@ def _run_one(
 
         if df_raw is None or (hasattr(df_raw, "empty") and df_raw.empty):
             loader.load_log(
-                job_name=JOB_SYNC_PRICES, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_PRICES,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "status": "skipped", "rows": 0, "source": source_used}
 
         # Transform
         if source_used == "kbs":
-            df = dnse_tx.transform(df_raw, symbol)
+            df = kbs_tx.transform(df_raw, symbol)
         else:
             df = vnd_tx.transform(df_raw, symbol)
 
         if df.empty:
             loader.load_log(
-                job_name=JOB_SYNC_PRICES, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_PRICES,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "status": "skipped", "rows": 0, "source": source_used}
 
         # Load
         rows = loader.load(df, _TABLE, _CONFLICT_KEYS)
         loader.load_log(
-            job_name=JOB_SYNC_PRICES, symbol=symbol,
-            status="success", records_fetched=len(df),
-            records_inserted=rows, log_id=log_id,
+            job_name=JOB_SYNC_PRICES,
+            symbol=symbol,
+            status="success",
+            records_fetched=len(df),
+            records_inserted=rows,
+            log_id=log_id,
         )
         return {"symbol": symbol, "status": "success", "rows": rows, "source": source_used}
 
     except Exception as exc:
         logger.error(f"[sync_prices] {symbol} lỗi: {exc}")
         loader.load_log(
-            job_name=JOB_SYNC_PRICES, symbol=symbol,
-            status="failed", error_message=str(exc)[:500], log_id=log_id,
+            job_name=JOB_SYNC_PRICES,
+            symbol=symbol,
+            status="failed",
+            error_message=str(exc)[:500],
+            log_id=log_id,
         )
         return {"symbol": symbol, "status": "failed", "rows": 0, "source": "none"}
 
@@ -163,21 +175,25 @@ def run(
         f"{max_workers} luồng, full_history={full_history}."
     )
 
-    dnse_ext = DNSEPriceExtractor()
-    dnse_tx  = DNSEPriceTransformer()
-    vnd_ext  = VNDirectPriceExtractor()
-    vnd_tx   = VNDirectPriceTransformer()
-    loader   = PostgresLoader()
+    kbs_ext = KBSPriceExtractor()
+    kbs_tx = KBSPriceTransformer()
+    vnd_ext = VNDirectPriceExtractor()
+    vnd_tx = VNDirectPriceTransformer()
+    loader = PostgresLoader()
 
     totals = {"success": 0, "failed": 0, "skipped": 0, "rows": 0, "kbs": 0, "vndirect": 0}
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
             pool.submit(
-                _run_one, sym,
-                dnse_ext, dnse_tx,
-                vnd_ext, vnd_tx,
-                loader, full_history,
+                _run_one,
+                sym,
+                kbs_ext,
+                kbs_tx,
+                vnd_ext,
+                vnd_tx,
+                loader,
+                full_history,
             ): sym
             for sym in symbols
         }
@@ -201,12 +217,17 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Đồng bộ giá lịch sử OHLCV.")
-    parser.add_argument("--symbol", nargs="+", default=None, metavar="SYM",
-                        help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.")
-    parser.add_argument("--workers", type=int, default=None,
-                        help="Số luồng song song.")
-    parser.add_argument("--full-history", action="store_true",
-                        help="Fetch lại 5 năm lịch sử (bỏ qua incremental).")
+    parser.add_argument(
+        "--symbol",
+        nargs="+",
+        default=None,
+        metavar="SYM",
+        help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.",
+    )
+    parser.add_argument("--workers", type=int, default=None, help="Số luồng song song.")
+    parser.add_argument(
+        "--full-history", action="store_true", help="Fetch lại 5 năm lịch sử (bỏ qua incremental)."
+    )
     args = parser.parse_args()
 
     result = run(

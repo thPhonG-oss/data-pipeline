@@ -1,7 +1,8 @@
 """Transformer cho dữ liệu trading: ratio_summary."""
+
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pandas as pd
 
@@ -10,57 +11,113 @@ from utils.logger import logger
 
 # Đổi tên cột API → tên cột schema DB
 _RENAME_MAP: dict[str, str] = {
-    "de":            "debt_to_equity",
-    "at":            "asset_turnover",
-    "fat":           "fixed_asset_turnover",
-    "dso":           "receivable_days",
-    "dpo":           "payable_days",
-    "ccc":           "cash_conversion_cycle",
+    "de": "debt_to_equity",
+    "at": "asset_turnover",
+    "fat": "fixed_asset_turnover",
+    "dso": "receivable_days",
+    "dpo": "payable_days",
+    "ccc": "cash_conversion_cycle",
     "ev_per_ebitda": "ev_ebitda",
 }
 
 # Cột lưu vào BIGINT (giá trị tiền, đơn vị đồng)
 _BIGINT_COLS = [
-    "revenue", "net_profit", "ev", "ebitda", "ebit",
-    "issue_share", "charter_capital",
+    "revenue",
+    "net_profit",
+    "ev",
+    "ebitda",
+    "ebit",
+    "issue_share",
+    "charter_capital",
 ]
 
 # Cột lưu vào NUMERIC (tỷ lệ, hệ số, chỉ số)
 _FLOAT_COLS = [
-    "revenue_growth", "net_profit_growth", "ebit_margin",
-    "roe", "roic", "roa",
-    "pe", "pb", "ps", "pcf",
-    "eps", "eps_ttm", "bvps",
-    "current_ratio", "quick_ratio", "cash_ratio", "interest_coverage",
-    "debt_to_equity", "net_profit_margin", "gross_margin",
-    "ev_ebitda", "asset_turnover", "fixed_asset_turnover",
-    "receivable_days", "payable_days", "cash_conversion_cycle",
+    "revenue_growth",
+    "net_profit_growth",
+    "ebit_margin",
+    "roe",
+    "roic",
+    "roa",
+    "pe",
+    "pb",
+    "ps",
+    "pcf",
+    "eps",
+    "eps_ttm",
+    "bvps",
+    "current_ratio",
+    "quick_ratio",
+    "cash_ratio",
+    "interest_coverage",
+    "debt_to_equity",
+    "net_profit_margin",
+    "gross_margin",
+    "ev_ebitda",
+    "asset_turnover",
+    "fixed_asset_turnover",
+    "receivable_days",
+    "payable_days",
+    "cash_conversion_cycle",
     "dividend",
 ]
 
 # Cột không có trong schema DB → gom vào extra_metrics JSONB
 _EXTRA_COLS = [
-    "ae", "fae", "le",
-    "rtq4", "rtq10", "rtq17",
-    "charter_capital_ratio", "acp",
-    "length_report", "update_date",
+    "ae",
+    "fae",
+    "le",
+    "rtq4",
+    "rtq10",
+    "rtq17",
+    "charter_capital_ratio",
+    "acp",
+    "length_report",
+    "update_date",
 ]
 
 # Cột có trong schema DB (sau khi đổi tên)
 _DB_COLS = [
-    "symbol", "year_report", "quarter_report",
-    "revenue", "revenue_growth",
-    "net_profit", "net_profit_growth",
-    "ebit_margin", "roe", "roa", "roic",
-    "pe", "pb", "ps", "pcf",
-    "eps", "eps_ttm", "bvps",
-    "current_ratio", "quick_ratio", "cash_ratio", "interest_coverage",
-    "debt_to_equity", "net_profit_margin", "gross_margin",
-    "ev", "ev_ebitda", "ebitda", "ebit",
-    "asset_turnover", "fixed_asset_turnover",
-    "receivable_days", "inventory_days", "payable_days", "cash_conversion_cycle",
-    "dividend", "issue_share", "charter_capital",
-    "extra_metrics", "fetched_at",
+    "symbol",
+    "year_report",
+    "quarter_report",
+    "revenue",
+    "revenue_growth",
+    "net_profit",
+    "net_profit_growth",
+    "ebit_margin",
+    "roe",
+    "roa",
+    "roic",
+    "pe",
+    "pb",
+    "ps",
+    "pcf",
+    "eps",
+    "eps_ttm",
+    "bvps",
+    "current_ratio",
+    "quick_ratio",
+    "cash_ratio",
+    "interest_coverage",
+    "debt_to_equity",
+    "net_profit_margin",
+    "gross_margin",
+    "ev",
+    "ev_ebitda",
+    "ebitda",
+    "ebit",
+    "asset_turnover",
+    "fixed_asset_turnover",
+    "receivable_days",
+    "inventory_days",
+    "payable_days",
+    "cash_conversion_cycle",
+    "dividend",
+    "issue_share",
+    "charter_capital",
+    "extra_metrics",
+    "fetched_at",
 ]
 
 
@@ -147,9 +204,9 @@ class TradingTransformer(BaseTransformer):
 
         # 2. Thêm các cột bắt buộc
         df["symbol"] = symbol
-        df["quarter_report"] = 0      # 0 = annual snapshot; NULL không dùng được làm conflict key
-        df["inventory_days"] = None    # API không cung cấp trực tiếp
-        df["fetched_at"] = datetime.now(tz=timezone.utc)
+        df["quarter_report"] = 0  # 0 = annual snapshot; NULL không dùng được làm conflict key
+        df["inventory_days"] = None  # API không cung cấp trực tiếp
+        df["fetched_at"] = datetime.now(tz=UTC)
 
         # 3. Ép kiểu BIGINT
         for col in _BIGINT_COLS:
@@ -178,9 +235,7 @@ class TradingTransformer(BaseTransformer):
         df = df.dropna(subset=["symbol", "year_report"])
 
         # 8. Deduplicate conflict key — tránh CardinalityViolation
-        df = df.drop_duplicates(
-            subset=["symbol", "year_report", "quarter_report"], keep="last"
-        )
+        df = df.drop_duplicates(subset=["symbol", "year_report", "quarter_report"], keep="last")
 
         # 9. Chỉ giữ cột có trong schema DB (bỏ cột dư)
         final_cols = [c for c in _DB_COLS if c in df.columns]

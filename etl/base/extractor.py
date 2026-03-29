@@ -1,4 +1,5 @@
 """Abstract base class cho tất cả Extractors."""
+
 from abc import ABC, abstractmethod
 
 import pandas as pd

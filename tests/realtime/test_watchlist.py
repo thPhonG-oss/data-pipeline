@@ -1,18 +1,45 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from realtime.watchlist import WatchlistManager
 
 _VN30 = [
-    "ACB","BCM","BID","BVH","CTG","FPT","GAS","GVR","HDB","HPG",
-    "MBB","MSN","MWG","PLX","POW","SAB","SHB","SSB","SSI","STB",
-    "TCB","TPB","VCB","VHM","VIB","VIC","VJC","VNM","VPB","VRE",
+    "ACB",
+    "BCM",
+    "BID",
+    "BVH",
+    "CTG",
+    "FPT",
+    "GAS",
+    "GVR",
+    "HDB",
+    "HPG",
+    "MBB",
+    "MSN",
+    "MWG",
+    "PLX",
+    "POW",
+    "SAB",
+    "SHB",
+    "SSB",
+    "SSI",
+    "STB",
+    "TCB",
+    "TPB",
+    "VCB",
+    "VHM",
+    "VIB",
+    "VIC",
+    "VJC",
+    "VNM",
+    "VPB",
+    "VRE",
 ]
 
 
 def test_load_from_env():
     mgr = WatchlistManager(watchlist_str="HPG,vcb, FPT ")
     symbols = mgr.get_symbols()
-    assert symbols == ["FPT", "HPG", "VCB"]   # sorted, uppercased, stripped
+    assert symbols == ["FPT", "HPG", "VCB"]  # sorted, uppercased, stripped
 
 
 def test_load_from_db_when_env_empty():

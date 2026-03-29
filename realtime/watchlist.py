@@ -1,4 +1,5 @@
 """Watchlist manager — danh sách symbol cần subscribe real-time."""
+
 from sqlalchemy import text
 
 from db.connection import engine
@@ -6,9 +7,36 @@ from utils.logger import logger
 
 # VN30 hardcode (fallback khi DB không kết nối được)
 _VN30_FALLBACK = [
-    "ACB","BCM","BID","BVH","CTG","FPT","GAS","GVR","HDB","HPG",
-    "MBB","MSN","MWG","PLX","POW","SAB","SHB","SSB","SSI","STB",
-    "TCB","TPB","VCB","VHM","VIB","VIC","VJC","VNM","VPB","VRE",
+    "ACB",
+    "BCM",
+    "BID",
+    "BVH",
+    "CTG",
+    "FPT",
+    "GAS",
+    "GVR",
+    "HDB",
+    "HPG",
+    "MBB",
+    "MSN",
+    "MWG",
+    "PLX",
+    "POW",
+    "SAB",
+    "SHB",
+    "SSB",
+    "SSI",
+    "STB",
+    "TCB",
+    "TPB",
+    "VCB",
+    "VHM",
+    "VIB",
+    "VIC",
+    "VJC",
+    "VNM",
+    "VPB",
+    "VRE",
 ]
 
 

@@ -15,6 +15,7 @@ VNDirect trả về JSON fields:
 
 Đơn vị giá VNDirect: nghìn VND → nhân ×1000 trước khi lưu.
 """
+
 import math
 
 import pandas as pd
@@ -22,7 +23,7 @@ import pandas as pd
 from etl.base.transformer import BaseTransformer
 from utils.logger import logger
 
-_PRICE_SCALE = 1000   # VNDirect trả về nghìn VND, cần ×1000
+_PRICE_SCALE = 1000  # VNDirect trả về nghìn VND, cần ×1000
 
 
 def _to_int(val, scale: int = 1) -> int | None:
@@ -65,19 +66,21 @@ class VNDirectPriceTransformer(BaseTransformer):
                 logger.warning(f"[vndirect_price_tx] {symbol}: close=None tại {raw_date}, bỏ qua.")
                 continue
 
-            rows.append({
-                "symbol":    symbol.upper(),
-                "date":      pd.to_datetime(raw_date).date(),
-                "open":      _to_int(row.get("open"), _PRICE_SCALE),
-                "high":      _to_int(row.get("high"), _PRICE_SCALE),
-                "low":       _to_int(row.get("low"), _PRICE_SCALE),
-                "close":     close_val,
-                "close_adj": _to_int(row.get("adClose"), _PRICE_SCALE),
-                "volume":    _to_int(row.get("volume")),
-                "volume_nm": _to_int(row.get("nmVolume")),
-                "value":     _to_int(row.get("value")),   # Triệu VND — giữ nguyên
-                "source":    "vndirect",
-            })
+            rows.append(
+                {
+                    "symbol": symbol.upper(),
+                    "date": pd.to_datetime(raw_date).date(),
+                    "open": _to_int(row.get("open"), _PRICE_SCALE),
+                    "high": _to_int(row.get("high"), _PRICE_SCALE),
+                    "low": _to_int(row.get("low"), _PRICE_SCALE),
+                    "close": close_val,
+                    "close_adj": _to_int(row.get("adClose"), _PRICE_SCALE),
+                    "volume": _to_int(row.get("volume")),
+                    "volume_nm": _to_int(row.get("nmVolume")),
+                    "value": _to_int(row.get("value")),  # Triệu VND — giữ nguyên
+                    "source": "vndirect",
+                }
+            )
 
         result = pd.DataFrame(rows)
         logger.info(f"[vndirect_price_tx] {symbol}: transform xong {len(result)} dòng.")
