@@ -1,0 +1,11 @@
+# Force LF line endings for all text files in the repository.
+# This ensures consistent formatting across Windows/Linux/macOS
+# and prevents ruff format failures on CI (Linux).
+
+* text=auto eol=lf
+
+# Explicitly mark binary files to prevent line-ending conversion
+*.png binary
+*.jpg binary
+*.ico binary
+*.ipynb binary
