@@ -1,4 +1,5 @@
 """Extractor cho dữ liệu trading: ratio_summary (snapshot tài chính mới nhất)."""
+
 import pandas as pd
 from vnstock_data import Company
 

@@ -13,6 +13,7 @@ Mỗi parser:
     - Định nghĩa NULL_FIELDS: {statement_type → {canonical fields không áp dụng}}
     - Kế thừa parse(), _apply_mapping(), _build_raw_details() từ base
 """
+
 from __future__ import annotations
 
 import math
@@ -25,25 +26,27 @@ from utils.logger import logger
 
 # Tập cột chi phí cần lấy giá trị tuyệt đối
 # (API trả về âm, DB lưu dương để dễ tính toán và screener)
-_ABS_FIELDS: frozenset[str] = frozenset({
-    # Non-financial
-    "cost_of_goods_sold",
-    "financial_expenses",
-    "interest_expense",
-    "selling_expenses",
-    "admin_expenses",
-    "income_tax",
-    "capex",
-    "debt_repayment",
-    "dividends_paid",
-    # Banking
-    "credit_provision_expense",
-    "loan_loss_reserve",
-    "operating_expenses",
-    # Securities / Insurance
-    "net_insurance_claims",
-    "insurance_acquisition_costs",
-})
+_ABS_FIELDS: frozenset[str] = frozenset(
+    {
+        # Non-financial
+        "cost_of_goods_sold",
+        "financial_expenses",
+        "interest_expense",
+        "selling_expenses",
+        "admin_expenses",
+        "income_tax",
+        "capex",
+        "debt_repayment",
+        "dividends_paid",
+        # Banking
+        "credit_provision_expense",
+        "loan_loss_reserve",
+        "operating_expenses",
+        # Securities / Insurance
+        "net_insurance_claims",
+        "insurance_acquisition_costs",
+    }
+)
 
 
 class BaseFinancialParser(ABC):
@@ -61,9 +64,7 @@ class BaseFinancialParser(ABC):
     def __init__(self, statement_type: str) -> None:
         valid = {"balance_sheet", "income_statement", "cash_flow"}
         if statement_type not in valid:
-            raise ValueError(
-                f"statement_type không hợp lệ: '{statement_type}'. Chọn: {valid}"
-            )
+            raise ValueError(f"statement_type không hợp lệ: '{statement_type}'. Chọn: {valid}")
         self.statement_type = statement_type
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -86,23 +87,23 @@ class BaseFinancialParser(ABC):
         Returns:
             List dict, mỗi dict là một kỳ báo cáo sẵn sàng load vào Approach C tables.
         """
-        mapping     = self.FIELD_MAPS.get(self.statement_type, {})
+        mapping = self.FIELD_MAPS.get(self.statement_type, {})
         null_fields = self.NULL_FIELDS.get(self.statement_type, set())
         payloads: list[dict[str, Any]] = []
 
         for period_label, row in df.iterrows():
             period, period_type = self._parse_period(str(period_label))
-            core        = self._apply_mapping(row, mapping, null_fields)
+            core = self._apply_mapping(row, mapping, null_fields)
             raw_details = self._build_raw_details(row)
 
             payload: dict[str, Any] = {
-                "symbol":         symbol,
-                "period":         period,
-                "period_type":    period_type,
+                "symbol": symbol,
+                "period": period,
+                "period_type": period_type,
                 "statement_type": self.statement_type,
-                "template":       self._template_name(),
-                "source":         "vci",
-                "icb_code":       icb_code,
+                "template": self._template_name(),
+                "source": "vci",
+                "icb_code": icb_code,
             }
             payload.update(core)
             payload["raw_details"] = raw_details
@@ -211,9 +212,9 @@ class BaseFinancialParser(ABC):
         label = label.strip()
         # Format: "Q1/2024"
         if label.startswith("Q") and "/" in label:
-            parts   = label.split("/")
-            quarter = parts[0]           # "Q1"
-            year    = parts[1] if len(parts) > 1 else "0000"
+            parts = label.split("/")
+            quarter = parts[0]  # "Q1"
+            year = parts[1] if len(parts) > 1 else "0000"
             return f"{year}{quarter}", "quarter"
         # Format: "2024-Q1" (vnstock cũ)
         if "-Q" in label:
@@ -228,6 +229,7 @@ class BaseFinancialParser(ABC):
 
 # ── Concrete Parsers ──────────────────────────────────────────────────────────
 
+
 class NonFinancialParser(BaseFinancialParser):
     """Parser cho doanh nghiệp phi tài chính (sản xuất, bán lẻ, công nghệ...)."""
 
@@ -239,16 +241,16 @@ class NonFinancialParser(BaseFinancialParser):
     )
 
     FIELD_MAPS = {
-        "balance_sheet":    BALANCE_SHEET_MAP,
+        "balance_sheet": BALANCE_SHEET_MAP,
         "income_statement": INCOME_STATEMENT_MAP,
-        "cash_flow":        CASH_FLOW_MAP,
+        "cash_flow": CASH_FLOW_MAP,
     }
 
     NULL_FIELDS: dict[str, set[str]] = {
         # Phi tài chính không có chỉ tiêu nào force NULL
-        "balance_sheet":    set(),
+        "balance_sheet": set(),
         "income_statement": set(),
-        "cash_flow":        set(),
+        "cash_flow": set(),
     }
 
     def _template_name(self) -> str:
@@ -265,20 +267,26 @@ class BankingParser(BaseFinancialParser):
     )
 
     FIELD_MAPS = {
-        "balance_sheet":    BALANCE_SHEET_MAP,
+        "balance_sheet": BALANCE_SHEET_MAP,
         "income_statement": INCOME_STATEMENT_MAP,
-        "cash_flow":        CASH_FLOW_MAP,
+        "cash_flow": CASH_FLOW_MAP,
     }
 
     NULL_FIELDS: dict[str, set[str]] = {
         # Ngân hàng không có hàng tồn kho, GVHB, lợi nhuận gộp → force NULL
         "balance_sheet": {
-            "inventory_net", "inventory_gross", "inventory_allowance",
-            "ppe_gross", "accumulated_depreciation", "construction_in_progress",
+            "inventory_net",
+            "inventory_gross",
+            "inventory_allowance",
+            "ppe_gross",
+            "accumulated_depreciation",
+            "construction_in_progress",
         },
         "income_statement": {
-            "cost_of_goods_sold", "gross_profit",
-            "selling_expenses", "admin_expenses",
+            "cost_of_goods_sold",
+            "gross_profit",
+            "selling_expenses",
+            "admin_expenses",
             "gross_revenue",
         },
         # Ngân hàng VN không có dòng "Lưu chuyển tiền từ HDTC" riêng biệt
@@ -302,17 +310,20 @@ class SecuritiesParser(BaseFinancialParser):
     )
 
     FIELD_MAPS = {
-        "balance_sheet":    BALANCE_SHEET_MAP,
+        "balance_sheet": BALANCE_SHEET_MAP,
         "income_statement": INCOME_STATEMENT_MAP,
-        "cash_flow":        CASH_FLOW_MAP,
+        "cash_flow": CASH_FLOW_MAP,
     }
 
     NULL_FIELDS: dict[str, set[str]] = {
         "balance_sheet": {
-            "inventory_net", "inventory_gross", "inventory_allowance",
+            "inventory_net",
+            "inventory_gross",
+            "inventory_allowance",
         },
         "income_statement": {
-            "cost_of_goods_sold", "gross_profit",
+            "cost_of_goods_sold",
+            "gross_profit",
             "ebt",  # CTCK IS không có dòng lợi nhuận trước thuế riêng
         },
         "cash_flow": set(),
@@ -335,17 +346,20 @@ class InsuranceParser(BaseFinancialParser):
     )
 
     FIELD_MAPS = {
-        "balance_sheet":    BALANCE_SHEET_MAP,
+        "balance_sheet": BALANCE_SHEET_MAP,
         "income_statement": INCOME_STATEMENT_MAP,
-        "cash_flow":        CASH_FLOW_MAP,
+        "cash_flow": CASH_FLOW_MAP,
     }
 
     NULL_FIELDS: dict[str, set[str]] = {
         "balance_sheet": {
-            "inventory_net", "inventory_gross", "inventory_allowance",
+            "inventory_net",
+            "inventory_gross",
+            "inventory_allowance",
         },
         "income_statement": {
-            "cost_of_goods_sold", "gross_profit",
+            "cost_of_goods_sold",
+            "gross_profit",
         },
         "cash_flow": set(),
     }

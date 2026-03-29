@@ -1,4 +1,5 @@
 """Transformer cho danh mục chứng khoán và phân ngành ICB."""
+
 import pandas as pd
 
 from config.constants import VALID_EXCHANGES, VALID_SECURITY_TYPES, VALID_STATUSES
@@ -13,7 +14,7 @@ _PARENT_CODE_LEN: dict[int, int] = {4: 2, 6: 4, 8: 6}
 # Mapping type từ vnstock API sang DB constraint
 _TYPE_MAP: dict[str, str] = {
     "STOCK": "STOCK",
-    "IFC": "FUND",    # Investment Fund Certificate → FUND
+    "IFC": "FUND",  # Investment Fund Certificate → FUND
     "ETF": "ETF",
     "BOND": "BOND",
     "CW": "CW",
@@ -136,16 +137,20 @@ class ListingTransformer(BaseTransformer):
             level = _LEVEL_BY_CODE_LEN.get(len(code))
             if level is None:
                 continue  # bỏ qua code không đúng chuẩn ICB
-            parent_code = code[: _PARENT_CODE_LEN[len(code)]] if len(code) in _PARENT_CODE_LEN else None
+            parent_code = (
+                code[: _PARENT_CODE_LEN[len(code)]] if len(code) in _PARENT_CODE_LEN else None
+            )
             name = str(row[name_col]).strip() if name_col and pd.notna(row.get(name_col)) else code
-            records.append({
-                "icb_code":    code,
-                "icb_name":    name,
-                "en_icb_name": None,
-                "level":       level,
-                "parent_code": parent_code,
-                "definition":  None,
-            })
+            records.append(
+                {
+                    "icb_code": code,
+                    "icb_name": name,
+                    "en_icb_name": None,
+                    "level": level,
+                    "parent_code": parent_code,
+                    "definition": None,
+                }
+            )
 
         if not records:
             return _empty
@@ -187,9 +192,8 @@ class ListingTransformer(BaseTransformer):
         # Ép kiểu ngày tháng — dùng apply để NaT → None (psycopg2 không nhận NaT)
         for col in ["listed_date", "delisted_date"]:
             if col in df.columns:
-                df[col] = (
-                    pd.to_datetime(df[col], errors="coerce")
-                    .apply(lambda x: x.date() if not pd.isna(x) else None)
+                df[col] = pd.to_datetime(df[col], errors="coerce").apply(
+                    lambda x: x.date() if not pd.isna(x) else None
                 )
 
         # company_id sang int nullable
@@ -199,21 +203,27 @@ class ListingTransformer(BaseTransformer):
         # tax_code: một số công ty có nhiều mã ngăn cách bởi '/' → chỉ lấy mã đầu tiên
         if "tax_code" in df.columns:
             df["tax_code"] = (
-                df["tax_code"]
-                .astype(str)
-                .str.split("/")
-                .str[0]
-                .str.strip()
-                .replace("nan", None)
+                df["tax_code"].astype(str).str.split("/").str[0].str.strip().replace("nan", None)
             )
 
         # icb_code không có trong all_symbols() — không đưa vào upsert payload để
         # tránh overwrite giá trị đã được sync_company cập nhật.
-        df = df[[
-            "symbol", "company_name", "company_name_eng", "short_name",
-            "exchange", "type", "status",
-            "listed_date", "delisted_date", "company_id", "isin", "tax_code",
-        ]]
+        df = df[
+            [
+                "symbol",
+                "company_name",
+                "company_name_eng",
+                "short_name",
+                "exchange",
+                "type",
+                "status",
+                "listed_date",
+                "delisted_date",
+                "company_id",
+                "isin",
+                "tax_code",
+            ]
+        ]
 
         before = len(df)
         df = df.dropna(subset=["symbol", "company_name", "exchange", "type"])

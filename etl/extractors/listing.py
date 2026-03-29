@@ -1,4 +1,5 @@
 """Extractor cho danh mục chứng khoán và phân ngành ICB."""
+
 import json
 from pathlib import Path
 
@@ -346,47 +347,55 @@ class ListingExtractor(BaseExtractor):
 
         for industry in data.get("industries", []):
             ind_id = industry["id"]
-            records.append({
-                "icb_code":    str(ind_id),
-                "en_icb_name": industry["name"],
-                "icb_name":    _VI_LEVEL1.get(ind_id, industry["name"]),
-                "level":       1,
-                "parent_code": None,
-                "definition":  None,
-            })
+            records.append(
+                {
+                    "icb_code": str(ind_id),
+                    "en_icb_name": industry["name"],
+                    "icb_name": _VI_LEVEL1.get(ind_id, industry["name"]),
+                    "level": 1,
+                    "parent_code": None,
+                    "definition": None,
+                }
+            )
 
             for supersector in industry.get("supersectors", []):
                 ss_id = supersector["id"]
-                records.append({
-                    "icb_code":    str(ss_id),
-                    "en_icb_name": supersector["name"],
-                    "icb_name":    _VI_LEVEL2.get(ss_id, supersector["name"]),
-                    "level":       2,
-                    "parent_code": str(ind_id),
-                    "definition":  None,
-                })
+                records.append(
+                    {
+                        "icb_code": str(ss_id),
+                        "en_icb_name": supersector["name"],
+                        "icb_name": _VI_LEVEL2.get(ss_id, supersector["name"]),
+                        "level": 2,
+                        "parent_code": str(ind_id),
+                        "definition": None,
+                    }
+                )
 
                 for sector in supersector.get("sectors", []):
                     sec_id = sector["id"]
-                    records.append({
-                        "icb_code":    str(sec_id),
-                        "en_icb_name": sector["name"],
-                        "icb_name":    _VI_LEVEL3.get(sec_id, sector["name"]),
-                        "level":       3,
-                        "parent_code": str(ss_id),
-                        "definition":  None,
-                    })
+                    records.append(
+                        {
+                            "icb_code": str(sec_id),
+                            "en_icb_name": sector["name"],
+                            "icb_name": _VI_LEVEL3.get(sec_id, sector["name"]),
+                            "level": 3,
+                            "parent_code": str(ss_id),
+                            "definition": None,
+                        }
+                    )
 
                     for subsector in sector.get("subsectors", []):
                         sub_id = subsector["id"]
-                        records.append({
-                            "icb_code":    str(sub_id),
-                            "en_icb_name": subsector["name"],
-                            "icb_name":    _VI_LEVEL4.get(sub_id, subsector["name"]),
-                            "level":       4,
-                            "parent_code": str(sec_id),
-                            "definition":  subsector.get("definition"),
-                        })
+                        records.append(
+                            {
+                                "icb_code": str(sub_id),
+                                "en_icb_name": subsector["name"],
+                                "icb_name": _VI_LEVEL4.get(sub_id, subsector["name"]),
+                                "level": 4,
+                                "parent_code": str(sec_id),
+                                "definition": subsector.get("definition"),
+                            }
+                        )
 
         logger.info(f"[listing] Đọc được {len(records)} node ICB từ file JSON.")
         return records

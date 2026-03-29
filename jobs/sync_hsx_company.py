@@ -14,6 +14,7 @@ Thiết kế:
 Cách dùng:
     python main.py sync_hsx_company
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timezone
@@ -30,9 +31,9 @@ _UPDATE_COLS = ["brief", "phone", "fax", "address", "web_url"]
 
 class SyncHSXCompanyJob:
     def __init__(self) -> None:
-        self._extractor   = HSXCompanyExtractor()
+        self._extractor = HSXCompanyExtractor()
         self._transformer = HSXCompanyTransformer()
-        self._loader      = PostgresLoader()
+        self._loader = PostgresLoader()
 
     def run(self) -> dict:
         """
@@ -41,9 +42,7 @@ class SyncHSXCompanyJob:
         Returns:
             {"fetched": int, "upserted": int}
         """
-        log_id = self._loader.load_log(
-            JOB_SYNC_HSX_COMPANY, symbol="ALL", status="running"
-        )
+        log_id = self._loader.load_log(JOB_SYNC_HSX_COMPANY, symbol="ALL", status="running")
         start = datetime.now(tz=UTC)
 
         try:
@@ -57,8 +56,12 @@ class SyncHSXCompanyJob:
             if df.empty:
                 logger.warning("[sync_hsx_company] Không có dữ liệu sau transform.")
                 self._loader.load_log(
-                    JOB_SYNC_HSX_COMPANY, symbol="ALL", status="success",
-                    records_fetched=0, records_inserted=0, log_id=log_id,
+                    JOB_SYNC_HSX_COMPANY,
+                    symbol="ALL",
+                    status="success",
+                    records_fetched=0,
+                    records_inserted=0,
+                    log_id=log_id,
                 )
                 return {"fetched": 0, "upserted": 0}
 
@@ -78,16 +81,23 @@ class SyncHSXCompanyJob:
                 f"Fetched: {len(df)} | Upserted: {upserted}"
             )
             self._loader.load_log(
-                JOB_SYNC_HSX_COMPANY, symbol="ALL", status="success",
-                records_fetched=len(df), records_inserted=upserted, log_id=log_id,
+                JOB_SYNC_HSX_COMPANY,
+                symbol="ALL",
+                status="success",
+                records_fetched=len(df),
+                records_inserted=upserted,
+                log_id=log_id,
             )
             return {"fetched": len(df), "upserted": upserted}
 
         except Exception as exc:
             logger.error(f"[sync_hsx_company] Lỗi: {exc}")
             self._loader.load_log(
-                JOB_SYNC_HSX_COMPANY, symbol="ALL", status="error",
-                error_message=str(exc), log_id=log_id,
+                JOB_SYNC_HSX_COMPANY,
+                symbol="ALL",
+                status="error",
+                error_message=str(exc),
+                log_id=log_id,
             )
             raise
 

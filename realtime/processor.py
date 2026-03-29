@@ -4,6 +4,7 @@ Stream Processor — đọc từ Redis Streams và upsert vào PostgreSQL.
 Chạy:
   python -m realtime.processor
 """
+
 import os
 import signal
 import socket
@@ -19,19 +20,20 @@ from config.settings import settings
 from etl.loaders.postgres import PostgresLoader
 from utils.logger import logger
 
-_STREAMS       = ["stream:ohlc:1m", "stream:ohlc:5m"]
-_GROUP_NAME    = "ohlc-processors"
+_STREAMS = ["stream:ohlc:1m", "stream:ohlc:5m"]
+_GROUP_NAME = "ohlc-processors"
 _CONSUMER_NAME = f"worker-{socket.gethostname()}-{os.getpid()}"
-_BATCH_SIZE    = 100
-_BLOCK_MS      = 5000
-_AUTOCLAIM_MS  = 30 * 60 * 1000   # 30 minutes in ms
-_TABLE         = "price_intraday"
+_BATCH_SIZE = 100
+_BLOCK_MS = 5000
+_AUTOCLAIM_MS = 30 * 60 * 1000  # 30 minutes in ms
+_TABLE = "price_intraday"
 _CONFLICT_KEYS = CONFLICT_KEYS[_TABLE]
 
 _VALID_RESOLUTIONS = {"1", "5"}
 
 
 # ── Pure functions (testable) ──────────────────────────────────────────────────
+
 
 def _validate_message(msg: dict) -> bool:
     """Kiểm tra message có đủ fields và hợp lệ không."""
@@ -54,20 +56,21 @@ def _transform_message(msg: dict) -> dict:
     Hàm pure — không có I/O. Tất cả values từ Redis đều là string.
     """
     return {
-        "symbol":     str(msg["symbol"]).upper(),
-        "time":       msg["time"],
+        "symbol": str(msg["symbol"]).upper(),
+        "time": msg["time"],
         "resolution": int(msg["resolution"]),
-        "open":       int(round(float(msg["open"]))),
-        "high":       int(round(float(msg["high"]))),
-        "low":        int(round(float(msg["low"]))),
-        "close":      int(round(float(msg["close"]))),
-        "volume":     int(float(msg.get("volume") or 0)),
-        "source":     "dnse_mdds",
+        "open": int(round(float(msg["open"]))),
+        "high": int(round(float(msg["high"]))),
+        "low": int(round(float(msg["low"]))),
+        "close": int(round(float(msg["close"]))),
+        "volume": int(float(msg.get("volume") or 0)),
+        "source": "dnse_mdds",
         "fetched_at": datetime.now(tz=UTC),
     }
 
 
 # ── StreamProcessor ────────────────────────────────────────────────────────────
+
 
 class StreamProcessor:
     """Đọc messages từ Redis Streams, validate, transform, upsert PostgreSQL."""
@@ -85,7 +88,7 @@ class StreamProcessor:
     def run(self) -> None:
         self._running = True
         signal.signal(signal.SIGTERM, self._shutdown)
-        signal.signal(signal.SIGINT,  self._shutdown)
+        signal.signal(signal.SIGINT, self._shutdown)
         logger.info(f"[processor] Bắt đầu — consumer: {_CONSUMER_NAME}")
 
         while self._running:
@@ -143,7 +146,7 @@ class StreamProcessor:
                 logger.debug(f"[processor] {stream_name}: upserted {inserted} rows.")
             except Exception as exc:
                 logger.error(f"[processor] DB upsert failed: {exc}")
-                return   # Do NOT ACK — messages stay pending for retry
+                return  # Do NOT ACK — messages stay pending for retry
 
         if ack_ids:
             self._redis.xack(stream_name, _GROUP_NAME, *ack_ids)
@@ -151,12 +154,17 @@ class StreamProcessor:
     def _autoclaim_pending(self, stream: str) -> None:
         try:
             result = self._redis.xautoclaim(
-                stream, _GROUP_NAME, _CONSUMER_NAME,
-                min_idle_time=_AUTOCLAIM_MS, count=50,
+                stream,
+                _GROUP_NAME,
+                _CONSUMER_NAME,
+                min_idle_time=_AUTOCLAIM_MS,
+                count=50,
             )
             messages = result[1] if isinstance(result, (list, tuple)) and len(result) > 1 else []
             if messages:
-                logger.warning(f"[processor] Reclaiming {len(messages)} pending messages from {stream}.")
+                logger.warning(
+                    f"[processor] Reclaiming {len(messages)} pending messages from {stream}."
+                )
                 self._process_batch(stream, messages)
         except Exception as exc:
             logger.warning(f"[processor] XAUTOCLAIM error on {stream}: {exc}")

@@ -1,4 +1,5 @@
 """PostgreSQL loader — upsert DataFrame vào bảng bằng ON CONFLICT DO UPDATE."""
+
 from datetime import UTC
 from typing import Optional
 
@@ -133,7 +134,9 @@ class PostgresLoader(BaseLoader):
                 result = conn.execute(stmt)
                 total += result.rowcount
 
-        logger.info(f"[{table}] {'Inserted' if on_conflict == 'nothing' else 'Upserted'} {total} rows.")
+        logger.info(
+            f"[{table}] {'Inserted' if on_conflict == 'nothing' else 'Upserted'} {total} rows."
+        )
         return total
 
     def load_log(
@@ -160,7 +163,8 @@ class PostgresLoader(BaseLoader):
             if log_id is None:
                 # INSERT
                 result = conn.execute(
-                    tbl.insert().values(
+                    tbl.insert()
+                    .values(
                         job_name=job_name,
                         symbol=symbol,
                         status=status,
@@ -168,7 +172,8 @@ class PostgresLoader(BaseLoader):
                         records_inserted=records_inserted,
                         error_message=error_message,
                         started_at=datetime.now(tz=UTC),
-                    ).returning(tbl.c.id)
+                    )
+                    .returning(tbl.c.id)
                 )
                 return result.scalar_one()
             else:

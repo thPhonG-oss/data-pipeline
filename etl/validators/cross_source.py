@@ -12,6 +12,7 @@ Cách so sánh:
   diff_pct = |VCI - KBS*1000| / |VCI| × 100
   Flag khi diff_pct > 2%
 """
+
 from datetime import UTC, datetime, timezone
 
 import pandas as pd
@@ -21,20 +22,20 @@ from db.connection import engine
 from etl.loaders.postgres import PostgresLoader
 from utils.logger import logger
 
-_DIFF_THRESHOLD = 0.02   # 2%
-_KBS_SCALE = 1000        # KBS trả về nghìn VND → nhân ×1000 để ra VND nguyên
+_DIFF_THRESHOLD = 0.02  # 2%
+_KBS_SCALE = 1000  # KBS trả về nghìn VND → nhân ×1000 để ra VND nguyên
 
 # Mapping: canonical column trong financial_reports → item_id KBS Finance
 _BALANCE_SHEET_MAP = {
-    "total_assets":      "total_assets",
+    "total_assets": "total_assets",
     "total_liabilities": "a.liabilities",
-    "total_equity":      "b.owners_equity",
+    "total_equity": "b.owners_equity",
 }
 
 _INCOME_STMT_MAP = {
-    "net_revenue":  "n_3.net_revenue",
+    "net_revenue": "n_3.net_revenue",
     "gross_profit": "n_5.gross_profit",
-    "net_profit":   "profit_after_tax_for_shareholders_of_parent_company",
+    "net_profit": "profit_after_tax_for_shareholders_of_parent_company",
 }
 
 _CASHFLOW_MAP = {
@@ -43,16 +44,16 @@ _CASHFLOW_MAP = {
 
 # Approach C: mapping statement_type → tên bảng DB
 _TABLE_MAP = {
-    "balance_sheet":    "fin_balance_sheet",
+    "balance_sheet": "fin_balance_sheet",
     "income_statement": "fin_income_statement",
-    "cash_flow":        "fin_cash_flow",
+    "cash_flow": "fin_cash_flow",
 }
 
 # (statement_type, mapping cột DB→KBS item_id, method Finance KBS)
 _STATEMENTS = [
-    ("balance_sheet",    _BALANCE_SHEET_MAP, "balance_sheet"),
-    ("income_statement", _INCOME_STMT_MAP,   "income_statement"),
-    ("cash_flow",        _CASHFLOW_MAP,      "cash_flow"),
+    ("balance_sheet", _BALANCE_SHEET_MAP, "balance_sheet"),
+    ("income_statement", _INCOME_STMT_MAP, "income_statement"),
+    ("cash_flow", _CASHFLOW_MAP, "cash_flow"),
 ]
 
 
@@ -120,6 +121,7 @@ class FinanceCrossValidator:
         """
         try:
             from vnstock import Finance
+
             df = getattr(
                 Finance(source="kbs", symbol=symbol),
                 finance_method,
@@ -171,18 +173,20 @@ class FinanceCrossValidator:
 
                 diff_pct = abs(v_vci - v_kbs) / abs(v_vci)
                 if diff_pct > _DIFF_THRESHOLD:
-                    flags.append({
-                        "symbol":      symbol,
-                        "table_name":  _TABLE_MAP[stmt_type],
-                        "period":      period,
-                        "column_name": db_col,
-                        "source_a":    "vci",
-                        "value_a":     round(v_vci, 4),
-                        "source_b":    "kbs",
-                        "value_b":     round(v_kbs, 4),
-                        "diff_pct":    round(diff_pct * 100, 4),
-                        "flagged_at":  now,
-                    })
+                    flags.append(
+                        {
+                            "symbol": symbol,
+                            "table_name": _TABLE_MAP[stmt_type],
+                            "period": period,
+                            "column_name": db_col,
+                            "source_a": "vci",
+                            "value_a": round(v_vci, 4),
+                            "source_b": "kbs",
+                            "value_b": round(v_kbs, 4),
+                            "diff_pct": round(diff_pct * 100, 4),
+                            "flagged_at": now,
+                        }
+                    )
 
         if not flags:
             logger.info(f"[cross_validate] {symbol}/{stmt_type}: Không có dị thường.")

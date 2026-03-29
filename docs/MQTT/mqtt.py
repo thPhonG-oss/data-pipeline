@@ -9,20 +9,18 @@ from requests import get, post
 
 # Nếu có InvestorID và Token rồi thì có thể comment đoạn này vào
 load_dotenv()
-username = os.getenv("usernameEntrade") # Email hoặc số điện thoại đăng kí tài khoản
-password = os.getenv("password") # Mật khẩu đăng nhập tài khoản
+username = os.getenv("usernameEntrade")  # Email hoặc số điện thoại đăng kí tài khoản
+password = os.getenv("password")  # Mật khẩu đăng nhập tài khoản
 
 # Nhập thông tin vào đây (nếu có), và comment đoạn try...except bên dưới
 investor_id = None
 token = None
 
+
 def authenticate(username, password):
     try:
         url = "https://api.dnse.com.vn/user-service/api/auth"
-        _json = {
-            "username": username,
-            "password": password
-        }
+        _json = {"username": username, "password": password}
         response = post(url, json=_json)
         response.raise_for_status()
 
@@ -33,12 +31,11 @@ def authenticate(username, password):
         print(f"Authentication failed: {e}")
         return None
 
-def get_investor_info(token = None):
+
+def get_investor_info(token=None):
     try:
         url = "https://api.dnse.com.vn/user-service/api/me"
-        headers = {
-            "authorization": f"Bearer {token}"
-        }
+        headers = {"authorization": f"Bearer {token}"}
 
         response = get(url, headers=headers)
         response.raise_for_status()
@@ -50,7 +47,8 @@ def get_investor_info(token = None):
         print(f"Failed to get investor info: {e}")
         return None
 
-try: # Có thể comment nếu có thông tin
+
+try:  # Có thể comment nếu có thông tin
     token = authenticate(username, password)
     if token is not None:
         investor_info = get_investor_info(token=token)
@@ -78,20 +76,18 @@ client_id = f"{CLIENT_ID_PREFIX}{randint(1000, 2000)}"
 
 # Create client
 client = mqtt.Client(
-    mqtt.CallbackAPIVersion.VERSION2,
-    client_id,
-    protocol=mqtt.MQTTv5,
-    transport="websockets"
+    mqtt.CallbackAPIVersion.VERSION2, client_id, protocol=mqtt.MQTTv5, transport="websockets"
 )
 
 # Set credentials
 client.username_pw_set(investor_id, token)
 
 # SSL/TLS configuration (since it's wss://)
-client.tls_set(cert_reqs=ssl.CERT_NONE) # Bỏ qua kiểm tra SSL
-client.tls_insecure_set(True) # Cho phép kết nối với chứng chỉ self-signed
+client.tls_set(cert_reqs=ssl.CERT_NONE)  # Bỏ qua kiểm tra SSL
+client.tls_insecure_set(True)  # Cho phép kết nối với chứng chỉ self-signed
 client.ws_set_options(path="/wss")
 client.enable_logger()
+
 
 # Connect callback
 def on_connect(client, userdata, flags, rc, properties):
@@ -103,6 +99,7 @@ def on_connect(client, userdata, flags, rc, properties):
     else:
         print(f"on_connect(): Failed to connect, return code {rc}\n")
 
+
 # Message callback
 def on_message(client, userdata, msg):
     payload = json.JSONDecoder().decode(msg.payload.decode())
@@ -112,7 +109,10 @@ def on_message(client, userdata, msg):
     match_quantity = int(payload["matchQtty"])
 
     # Comment out if don't want to see this info
-    print(f"{payload["symbol"]}: {match_price} - Match Quantity: {match_quantity} - Side: {payload["side"]} - Time: {sending_time}")
+    print(
+        f"{payload['symbol']}: {match_price} - Match Quantity: {match_quantity} - Side: {payload['side']} - Time: {sending_time}"
+    )
+
 
 # Assign callback
 client.on_connect = on_connect

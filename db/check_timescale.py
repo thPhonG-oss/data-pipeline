@@ -5,6 +5,7 @@ Usage:
     python -m db.check_timescale
     python db/check_timescale.py
 """
+
 import sys
 from pathlib import Path
 

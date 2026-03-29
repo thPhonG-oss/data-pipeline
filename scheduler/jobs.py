@@ -1,4 +1,5 @@
 """Đăng ký và cấu hình tất cả APScheduler jobs."""
+
 import threading
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -14,6 +15,7 @@ _subscriber_thread: threading.Thread | None = None
 
 def _safe_run(job_fn, job_name: str):
     """Bọc job trong try/except để lỗi của 1 job không crash scheduler."""
+
     def wrapper():
         try:
             logger.info(f"[scheduler] Kích hoạt job: {job_name}")
@@ -21,6 +23,7 @@ def _safe_run(job_fn, job_name: str):
             logger.success(f"[scheduler] Hoàn thành job: {job_name}")
         except Exception as exc:
             logger.error(f"[scheduler] Job '{job_name}' thất bại: {exc}")
+
     return wrapper
 
 
@@ -34,6 +37,7 @@ def _start_realtime_subscriber() -> None:
 
     try:
         from realtime.subscriber import MQTTSubscriber
+
         _subscriber_instance = MQTTSubscriber()
         _subscriber_thread = threading.Thread(
             target=_subscriber_instance.run,
@@ -66,6 +70,7 @@ def _start_realtime_processor() -> None:
     """Khởi động stream processor trong background daemon thread."""
     try:
         from realtime.processor import StreamProcessor
+
         proc = StreamProcessor()
         t = threading.Thread(target=proc.run, daemon=True, name="realtime-processor")
         t.start()

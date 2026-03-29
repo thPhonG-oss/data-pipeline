@@ -1,4 +1,5 @@
 """SQLAlchemy engine, session factory và kiểm tra kết nối."""
+
 from collections.abc import Generator
 from contextlib import contextmanager
 

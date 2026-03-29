@@ -15,6 +15,7 @@ Khi upsert:
     - Symbol chưa tồn tại → INSERT với các trường cơ bản
       (company_name, exchange='HOSE', type='stock', + 5 trường mới)
 """
+
 from __future__ import annotations
 
 import pandas as pd
@@ -50,17 +51,19 @@ class HSXCompanyTransformer:
             if not symbol:
                 continue
 
-            rows.append({
-                "symbol":       symbol,
-                "company_name": (r.get("name") or "").strip(),
-                "exchange":     "HOSE",
-                "type":         _TYPE_MAP.get(r.get("securitiesType"), _DEFAULT_TYPE),
-                "brief":        _clean_str(r.get("brief")),
-                "phone":        _clean_str(r.get("phone")),
-                "fax":          _clean_str(r.get("fax")),
-                "address":      _clean_str(r.get("address")),
-                "web_url":      _clean_str(r.get("webUrl")),
-            })
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "company_name": (r.get("name") or "").strip(),
+                    "exchange": "HOSE",
+                    "type": _TYPE_MAP.get(r.get("securitiesType"), _DEFAULT_TYPE),
+                    "brief": _clean_str(r.get("brief")),
+                    "phone": _clean_str(r.get("phone")),
+                    "fax": _clean_str(r.get("fax")),
+                    "address": _clean_str(r.get("address")),
+                    "web_url": _clean_str(r.get("webUrl")),
+                }
+            )
 
         df = pd.DataFrame(rows)
         df = df.drop_duplicates(subset=["symbol"], keep="first")
@@ -70,6 +73,7 @@ class HSXCompanyTransformer:
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _clean_str(val: object) -> str | None:
     """Strip whitespace; trả None nếu rỗng hoặc null."""

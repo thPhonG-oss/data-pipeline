@@ -16,6 +16,7 @@ Quy tắc định tuyến (DB lưu ICB 8 chữ số theo chuẩn FTSE):
 
 Hỗ trợ legacy: mã cũ 4 ký tự "8300"/"8400"/"8500" (vnstock cũ) vẫn được nhận dạng.
 """
+
 from __future__ import annotations
 
 from etl.transformers.finance_parsers import (
@@ -42,13 +43,13 @@ def _resolve_parser(icb_code: str | None) -> type[BaseFinancialParser]:
         return _DEFAULT_PARSER
 
     # ── Định dạng FTSE 8 chữ số (DB hiện tại) ─────────────────────
-    if code.startswith("3010"):    # 30101010 = Banks
+    if code.startswith("3010"):  # 30101010 = Banks
         return BankingParser
-    if code.startswith("3030"):    # 30301010 = Life Insurance
+    if code.startswith("3030"):  # 30301010 = Life Insurance
         return InsuranceParser
-    if code.startswith("30302"):   # 30302010/20 = Nonlife/Reinsurance
+    if code.startswith("30302"):  # 30302010/20 = Nonlife/Reinsurance
         return InsuranceParser
-    if code.startswith("3020"):    # 30202015 = Investment Services (CTCK)
+    if code.startswith("3020"):  # 30202015 = Investment Services (CTCK)
         return SecuritiesParser
 
     # ── Định dạng cũ (legacy vnstock / VN ICB 4-chữ số) ─────────────
@@ -58,9 +59,9 @@ def _resolve_parser(icb_code: str | None) -> type[BaseFinancialParser]:
     prefix4 = code[:4]
     if prefix2 == "83":
         return BankingParser
-    if prefix2 == "84" or prefix4 in ("8530", "8536"):   # Life + Nonlife Insurance
+    if prefix2 == "84" or prefix4 in ("8530", "8536"):  # Life + Nonlife Insurance
         return InsuranceParser
-    if prefix2 == "85" or prefix2 == "87":               # 8500/8700-series = Financial Services / CTCK
+    if prefix2 == "85" or prefix2 == "87":  # 8500/8700-series = Financial Services / CTCK
         return SecuritiesParser
 
     return _DEFAULT_PARSER
@@ -103,8 +104,8 @@ class FinanceParserFactory:
         """
         parser_class = _resolve_parser(icb_code)
         return {
-            BankingParser:      "banking",
-            InsuranceParser:    "insurance",
-            SecuritiesParser:   "securities",
+            BankingParser: "banking",
+            InsuranceParser: "insurance",
+            SecuritiesParser: "securities",
             NonFinancialParser: "non_financial",
         }[parser_class]

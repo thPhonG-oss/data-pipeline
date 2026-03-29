@@ -1,4 +1,5 @@
 """Tiện ích xử lý chuỗi period cho pipeline."""
+
 import re
 from typing import Optional
 
@@ -21,8 +22,7 @@ def parse_period(period: str) -> tuple[int, int | None]:
     match = re.fullmatch(r"(\d{4})(?:Q([1-4]))?", period.strip())
     if not match:
         raise ValueError(
-            f"Định dạng period không hợp lệ: '{period}'. "
-            "Mong đợi '2024' hoặc '2024Q1'."
+            f"Định dạng period không hợp lệ: '{period}'. Mong đợi '2024' hoặc '2024Q1'."
         )
     year = int(match.group(1))
     quarter = int(match.group(2)) if match.group(2) else None

@@ -11,6 +11,7 @@ Routing bảng đích:
     "cash_flow"             → fin_cash_flow
     "ratio"                 → fin_financial_ratios
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -22,10 +23,10 @@ from etl.transformers.finance_factory import FinanceParserFactory
 
 # Mapping statement_type → table name trong DB
 TABLE_MAP: dict[str, str] = {
-    "balance_sheet":    "fin_balance_sheet",
+    "balance_sheet": "fin_balance_sheet",
     "income_statement": "fin_income_statement",
-    "cash_flow":        "fin_cash_flow",
-    "ratio":            "fin_financial_ratios",
+    "cash_flow": "fin_cash_flow",
+    "ratio": "fin_financial_ratios",
 }
 
 _RATIO_PARSER = RatioParser()
@@ -66,8 +67,7 @@ class ApproachCFactory:
         """
         if statement_type not in TABLE_MAP:
             raise ValueError(
-                f"statement_type không hợp lệ: '{statement_type}'. "
-                f"Chọn: {list(TABLE_MAP)}"
+                f"statement_type không hợp lệ: '{statement_type}'. Chọn: {list(TABLE_MAP)}"
             )
 
         table = TABLE_MAP[statement_type]
@@ -75,7 +75,7 @@ class ApproachCFactory:
         if statement_type == "ratio":
             payloads = _RATIO_PARSER.parse(df, symbol, icb_code=icb_code)
         else:
-            parser   = FinanceParserFactory.get_parser(icb_code, statement_type)
+            parser = FinanceParserFactory.get_parser(icb_code, statement_type)
             payloads = parser.parse(df, symbol, icb_code=icb_code)
 
         return payloads, table

@@ -16,6 +16,7 @@ Cách dùng:
 
 SAU KHI CHẠY: dùng `python -m db.migrate` cho tất cả các lần tiếp theo.
 """
+
 import hashlib
 import sys
 from pathlib import Path

@@ -13,6 +13,7 @@ Lưu ý:
   - KBS trả về nghìn VND (vd: 20.78 = 20,780 đồng) → _NEEDS_SCALE = True
   - Không có adjusted close → close_adj = NULL
 """
+
 import math
 
 import pandas as pd
@@ -66,19 +67,21 @@ class KBSPriceTransformer(BaseTransformer):
                 logger.warning(f"[dnse_price_tx] {symbol}: close=None tại {raw_date}, bỏ qua.")
                 continue
 
-            rows.append({
-                "symbol":    symbol.upper(),
-                "date":      pd.to_datetime(raw_date).date(),
-                "open":      _to_int(row.get("open"), scale),
-                "high":      _to_int(row.get("high"), scale),
-                "low":       _to_int(row.get("low"), scale),
-                "close":     close_val,
-                "close_adj": None,       # DNSE không cung cấp adjusted close
-                "volume":    _to_int(row.get("volume")),
-                "volume_nm": None,       # Chỉ có từ VNDirect
-                "value":     None,       # Chỉ có từ VNDirect
-                "source":    "kbs",
-            })
+            rows.append(
+                {
+                    "symbol": symbol.upper(),
+                    "date": pd.to_datetime(raw_date).date(),
+                    "open": _to_int(row.get("open"), scale),
+                    "high": _to_int(row.get("high"), scale),
+                    "low": _to_int(row.get("low"), scale),
+                    "close": close_val,
+                    "close_adj": None,  # DNSE không cung cấp adjusted close
+                    "volume": _to_int(row.get("volume")),
+                    "volume_nm": None,  # Chỉ có từ VNDirect
+                    "value": None,  # Chỉ có từ VNDirect
+                    "source": "kbs",
+                }
+            )
 
         result = pd.DataFrame(rows)
         logger.info(f"[dnse_price_tx] {symbol}: transform xong {len(result)} dòng.")

@@ -1,4 +1,5 @@
 """Extractor cho báo cáo tài chính: balance_sheet, income_statement, cash_flow, ratio."""
+
 import pandas as pd
 from vnstock_data import Finance
 
@@ -18,10 +19,10 @@ class FinanceExtractor(BaseExtractor):
     def extract(self, symbol: str, report_type: str = "balance_sheet", **kwargs) -> pd.DataFrame:
         """Dispatch theo report_type — tương thích BaseExtractor interface."""
         dispatch = {
-            "balance_sheet":      self.extract_balance_sheet,
-            "income_statement":   self.extract_income_statement,
-            "cash_flow":          self.extract_cash_flow,
-            "ratio":              self.extract_ratio,
+            "balance_sheet": self.extract_balance_sheet,
+            "income_statement": self.extract_income_statement,
+            "cash_flow": self.extract_cash_flow,
+            "ratio": self.extract_ratio,
         }
         if report_type not in dispatch:
             raise ValueError(f"report_type không hợp lệ: '{report_type}'. Chọn: {list(dispatch)}")

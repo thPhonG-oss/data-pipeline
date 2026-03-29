@@ -9,6 +9,7 @@ Tracking:
     Bảng `schema_migrations` được tạo tự động trong DB để ghi lại
     các file đã chạy. Mỗi file chỉ chạy đúng một lần.
 """
+
 import hashlib
 import sys
 from pathlib import Path
@@ -51,9 +52,9 @@ def _split_sql(sql: str) -> list[str]:
         # ── Inside a dollar-quoted block ──────────────────────────────
         if dollar_quote is not None:
             current.append(ch)
-            if sql[i:i + len(dollar_quote)] == dollar_quote:
+            if sql[i : i + len(dollar_quote)] == dollar_quote:
                 # Consume the closing tag
-                current.append(sql[i + 1:i + len(dollar_quote)])
+                current.append(sql[i + 1 : i + len(dollar_quote)])
                 i += len(dollar_quote)
                 dollar_quote = None
             else:
@@ -61,7 +62,7 @@ def _split_sql(sql: str) -> list[str]:
             continue
 
         # ── Line comment ──────────────────────────────────────────────
-        if ch == "-" and sql[i:i + 2] == "--":
+        if ch == "-" and sql[i : i + 2] == "--":
             # Skip to end of line
             while i < len(sql) and sql[i] != "\n":
                 i += 1
@@ -71,9 +72,9 @@ def _split_sql(sql: str) -> list[str]:
         if ch == "$":
             end = sql.find("$", i + 1)
             if end != -1:
-                tag = sql[i:end + 1]  # e.g. "$$" or "$body$"
+                tag = sql[i : end + 1]  # e.g. "$$" or "$body$"
                 dollar_quote = tag
-                current.append(sql[i:end + 1])
+                current.append(sql[i : end + 1])
                 i = end + 1
                 continue
 
@@ -164,8 +165,7 @@ def run_migrations() -> None:
             sql = f.read_text(encoding="utf-8")
             if _checksum(sql) != applied[f.name]:
                 logger.warning(
-                    f"  ⚠ {f.name} đã bị sửa sau khi apply "
-                    f"(checksum không khớp) — bỏ qua."
+                    f"  ⚠ {f.name} đã bị sửa sau khi apply (checksum không khớp) — bỏ qua."
                 )
 
     for sql_file in pending:

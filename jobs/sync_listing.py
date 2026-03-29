@@ -1,4 +1,5 @@
 """Job đồng bộ danh mục chứng khoán và phân ngành ICB."""
+
 import time
 
 from config.constants import CONFLICT_KEYS, JOB_SYNC_LISTING
@@ -63,7 +64,9 @@ def run() -> dict:
                     CONFLICT_KEYS["icb_industries"],
                     update_columns=["icb_name", "en_icb_name", "level"],
                 )
-                logger.success(f"[sync_listing] icb_industries (vnstock API): {rows_extra} rows upserted.")
+                logger.success(
+                    f"[sync_listing] icb_industries (vnstock API): {rows_extra} rows upserted."
+                )
         except Exception as exc:
             logger.warning(f"[sync_listing] industries_icb() thất bại (không nghiêm trọng): {exc}")
 
@@ -76,7 +79,9 @@ def run() -> dict:
             records_inserted=total_icb,
             log_id=log_id,
         )
-        logger.info(f"[sync_listing] icb_industries tổng: {total_icb} rows (JSON={rows_json}, symbols={rows_extra}).")
+        logger.info(
+            f"[sync_listing] icb_industries tổng: {total_icb} rows (JSON={rows_json}, symbols={rows_extra})."
+        )
     except Exception as exc:
         results["icb_industries"]["status"] = "failed"
         logger.error(f"[sync_listing] icb_industries thất bại: {exc}")

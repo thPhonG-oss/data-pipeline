@@ -3,6 +3,7 @@ Tests for TimescaleDB migration SQL logic.
 These are unit tests that validate SQL content and structure —
 they do NOT connect to a real DB.
 """
+
 import re
 from pathlib import Path
 
@@ -21,18 +22,17 @@ def test_009_enables_timescaledb_extension():
 def test_009_drops_id_column():
     sql = _read("009_timescaledb_setup.sql")
     # Must have DROP COLUMN and id together on the same line (co-located)
-    assert any(
-        "DROP COLUMN" in line and "id" in line
-        for line in sql.splitlines()
-    ), "Expected 'DROP COLUMN ... id' on a single line"
+    assert any("DROP COLUMN" in line and "id" in line for line in sql.splitlines()), (
+        "Expected 'DROP COLUMN ... id' on a single line"
+    )
 
 
 def test_009_creates_hypertable_price_intraday():
     sql = _read("009_timescaledb_setup.sql")
     # create_hypertable call must reference price_intraday and 'time' in the same block
-    assert re.search(
-        r"create_hypertable\s*\(\s*'price_intraday'\s*,\s*'time'", sql
-    ), "Expected create_hypertable('price_intraday', 'time', ...)"
+    assert re.search(r"create_hypertable\s*\(\s*'price_intraday'\s*,\s*'time'", sql), (
+        "Expected create_hypertable('price_intraday', 'time', ...)"
+    )
 
 
 def test_009_adds_retention_policy_180_days():
@@ -40,7 +40,7 @@ def test_009_adds_retention_policy_180_days():
     # Retention policy must name the table and the interval explicitly
     assert "add_retention_policy" in sql
     assert "'price_intraday'" in sql
-    assert "180 days" in sql   # documents the accepted 1m/5m compromise
+    assert "180 days" in sql  # documents the accepted 1m/5m compromise
 
 
 def test_009_adds_compression_policy():
@@ -69,17 +69,16 @@ def test_009_primary_key_time_is_leading_column():
 
 def test_010_drops_id_column_price_history():
     sql = _read("010_timescaledb_price_history.sql")
-    assert any(
-        "DROP COLUMN" in line and "id" in line
-        for line in sql.splitlines()
-    ), "Expected 'DROP COLUMN ... id' on a single line"
+    assert any("DROP COLUMN" in line and "id" in line for line in sql.splitlines()), (
+        "Expected 'DROP COLUMN ... id' on a single line"
+    )
 
 
 def test_010_creates_hypertable_price_history():
     sql = _read("010_timescaledb_price_history.sql")
-    assert re.search(
-        r"create_hypertable\s*\(\s*'price_history'\s*,\s*'date'", sql
-    ), "Expected create_hypertable('price_history', 'date', ...)"
+    assert re.search(r"create_hypertable\s*\(\s*'price_history'\s*,\s*'date'", sql), (
+        "Expected create_hypertable('price_history', 'date', ...)"
+    )
 
 
 def test_010_chunk_interval_is_90_days():
@@ -117,7 +116,9 @@ def test_011_creates_cagg_5m_from_price_intraday():
     assert "cagg_ohlc_5m" in sql
     assert "timescaledb.continuous" in sql
     assert re.search(r"FROM\s+price_intraday", sql), "cagg_ohlc_5m must query FROM price_intraday"
-    assert re.search(r"resolution\s*=\s*1", sql), "Must filter WHERE resolution = 1 (1m candles only)"
+    assert re.search(r"resolution\s*=\s*1", sql), (
+        "Must filter WHERE resolution = 1 (1m candles only)"
+    )
 
 
 def test_011_creates_cagg_1h_from_cagg_5m():
@@ -158,8 +159,10 @@ def test_check_timescale_script_exists():
 
 
 def test_check_timescale_imports_are_correct():
-    script = (Path(__file__).parent.parent.parent / "db" / "check_timescale.py").read_text(encoding="utf-8")
-    assert "timescaledb_information" in script   # queries TimescaleDB catalog
+    script = (Path(__file__).parent.parent.parent / "db" / "check_timescale.py").read_text(
+        encoding="utf-8"
+    )
+    assert "timescaledb_information" in script  # queries TimescaleDB catalog
     assert "hypertables" in script
-    assert "policy_retention" in script       # retention policy jobs
-    assert "policy_compression" in script     # compression policy jobs
+    assert "policy_retention" in script  # retention policy jobs
+    assert "policy_compression" in script  # compression policy jobs

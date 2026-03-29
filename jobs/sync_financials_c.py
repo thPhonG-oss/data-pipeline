@@ -11,6 +11,7 @@ Cách dùng:
     python -m jobs.sync_financials_c --symbols HPG VCB SSI BVH
     python -m jobs.sync_financials_c --report-types ratio
 """
+
 import argparse
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -62,17 +63,17 @@ def _run_one(
     pg_loader: PostgresLoader,
 ) -> dict:
     """E→T→L cho 1 symbol + report_type vào bảng Approach C."""
-    log_id = pg_loader.load_log(
-        job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol, status="running"
-    )
+    log_id = pg_loader.load_log(job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol, status="running")
     try:
         df_raw = extractor.extract(symbol, report_type=report_type)
         time.sleep(settings.request_delay)
 
         if df_raw.empty:
             pg_loader.load_log(
-                job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_FINANCIALS_C,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "report_type": report_type, "status": "skipped", "rows": 0}
 
@@ -85,24 +86,32 @@ def _run_one(
 
         if not payloads:
             pg_loader.load_log(
-                job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_FINANCIALS_C,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "report_type": report_type, "status": "skipped", "rows": 0}
 
         rows = approach_c_loader.load(payloads, statement_type=report_type)
         pg_loader.load_log(
-            job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol,
-            status="success", records_fetched=len(payloads),
-            records_inserted=rows, log_id=log_id,
+            job_name=JOB_SYNC_FINANCIALS_C,
+            symbol=symbol,
+            status="success",
+            records_fetched=len(payloads),
+            records_inserted=rows,
+            log_id=log_id,
         )
         return {"symbol": symbol, "report_type": report_type, "status": "success", "rows": rows}
 
     except Exception as exc:
         logger.exception(f"[sync_financials_c] {symbol}/{report_type} lỗi: {exc}")
         pg_loader.load_log(
-            job_name=JOB_SYNC_FINANCIALS_C, symbol=symbol,
-            status="failed", error_message=str(exc)[:500], log_id=log_id,
+            job_name=JOB_SYNC_FINANCIALS_C,
+            symbol=symbol,
+            status="failed",
+            error_message=str(exc)[:500],
+            log_id=log_id,
         )
         return {"symbol": symbol, "report_type": report_type, "status": "failed", "rows": 0}
 
@@ -120,9 +129,9 @@ def run(
         report_types: Mặc định: balance_sheet, income_statement, cash_flow, ratio.
         max_workers:  Mặc định: settings.max_workers.
     """
-    symbols      = symbols or _get_listed_symbols()
+    symbols = symbols or _get_listed_symbols()
     report_types = report_types or _ALL_REPORT_TYPES
-    max_workers  = max_workers or settings.max_workers
+    max_workers = max_workers or settings.max_workers
 
     icb_map = _get_icb_codes(symbols)
 
@@ -131,18 +140,19 @@ def run(
         f"({max_workers} luồng) → Approach C tables."
     )
 
-    extractor      = FinanceExtractor(source=settings.vnstock_source)
+    extractor = FinanceExtractor(source=settings.vnstock_source)
     approach_c_ldr = ApproachCLoader()
-    pg_ldr         = PostgresLoader()
+    pg_ldr = PostgresLoader()
 
     totals = {"success": 0, "failed": 0, "skipped": 0, "rows": 0}
-    tasks  = [(sym, rt) for sym in symbols for rt in report_types]
+    tasks = [(sym, rt) for sym in symbols for rt in report_types]
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
-            pool.submit(
-                _run_one, sym, rt, icb_map.get(sym), extractor, approach_c_ldr, pg_ldr
-            ): (sym, rt)
+            pool.submit(_run_one, sym, rt, icb_map.get(sym), extractor, approach_c_ldr, pg_ldr): (
+                sym,
+                rt,
+            )
             for sym, rt in tasks
         }
         for future in as_completed(futures):
@@ -161,16 +171,22 @@ def run(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Đồng bộ BCTC Approach C (4 bảng riêng).")
     parser.add_argument(
-        "--symbols", nargs="+", default=None,
+        "--symbols",
+        nargs="+",
+        default=None,
         help="Mã cần sync. Mặc định: tất cả mã đang niêm yết.",
     )
     parser.add_argument(
-        "--report-types", nargs="+", default=None,
+        "--report-types",
+        nargs="+",
+        default=None,
         choices=_ALL_REPORT_TYPES,
         help=f"Loại báo cáo. Mặc định: {_ALL_REPORT_TYPES}",
     )
     parser.add_argument(
-        "--workers", type=int, default=None,
+        "--workers",
+        type=int,
+        default=None,
         help="Số luồng. Mặc định: settings.max_workers.",
     )
     args = parser.parse_args()

@@ -1,4 +1,5 @@
 """Kiểm tra pipeline_logs và gửi alert khi job thất bại liên tiếp."""
+
 from datetime import UTC, datetime, timedelta, timezone
 
 from sqlalchemy import text
