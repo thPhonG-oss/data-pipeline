@@ -1,4 +1,5 @@
 """Job đồng bộ ratio_summary — snapshot tài chính mới nhất, chạy hàng ngày."""
+
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -40,8 +41,10 @@ def _run_one(
 
         if df_raw is None:
             loader.load_log(
-                job_name=JOB_SYNC_RATIOS, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_RATIOS,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "status": "skipped", "rows": 0}
 
@@ -49,24 +52,32 @@ def _run_one(
 
         if df.empty:
             loader.load_log(
-                job_name=JOB_SYNC_RATIOS, symbol=symbol,
-                status="skipped", log_id=log_id,
+                job_name=JOB_SYNC_RATIOS,
+                symbol=symbol,
+                status="skipped",
+                log_id=log_id,
             )
             return {"symbol": symbol, "status": "skipped", "rows": 0}
 
         rows = loader.load(df, "ratio_summary", CONFLICT_KEYS["ratio_summary"])
         loader.load_log(
-            job_name=JOB_SYNC_RATIOS, symbol=symbol,
-            status="success", records_fetched=len(df),
-            records_inserted=rows, log_id=log_id,
+            job_name=JOB_SYNC_RATIOS,
+            symbol=symbol,
+            status="success",
+            records_fetched=len(df),
+            records_inserted=rows,
+            log_id=log_id,
         )
         return {"symbol": symbol, "status": "success", "rows": rows}
 
     except Exception as exc:
         logger.error(f"[sync_ratios] {symbol} lỗi: {exc}")
         loader.load_log(
-            job_name=JOB_SYNC_RATIOS, symbol=symbol,
-            status="failed", error_message=str(exc)[:500], log_id=log_id,
+            job_name=JOB_SYNC_RATIOS,
+            symbol=symbol,
+            status="failed",
+            error_message=str(exc)[:500],
+            log_id=log_id,
         )
         return {"symbol": symbol, "status": "failed", "rows": 0}
 
@@ -85,9 +96,7 @@ def run(
     symbols = symbols or _get_listed_symbols()
     max_workers = max_workers or settings.max_workers
 
-    logger.info(
-        f"[sync_ratios] Bắt đầu: {len(symbols)} mã ({max_workers} luồng)."
-    )
+    logger.info(f"[sync_ratios] Bắt đầu: {len(symbols)} mã ({max_workers} luồng).")
 
     extractor = TradingExtractor(source=settings.vnstock_source)
     transformer = TradingTransformer()
@@ -97,8 +106,7 @@ def run(
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
-            pool.submit(_run_one, sym, extractor, transformer, loader): sym
-            for sym in symbols
+            pool.submit(_run_one, sym, extractor, transformer, loader): sym for sym in symbols
         }
         for future in as_completed(futures):
             result = future.result()
@@ -118,11 +126,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Đồng bộ ratio_summary.")
     parser.add_argument(
-        "--symbols", nargs="+", default=None,
+        "--symbols",
+        nargs="+",
+        default=None,
         help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết trong DB.",
     )
     parser.add_argument(
-        "--workers", type=int, default=None,
+        "--workers",
+        type=int,
+        default=None,
         help="Số luồng song song. Mặc định: settings.max_workers.",
     )
     args = parser.parse_args()

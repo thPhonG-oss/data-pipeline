@@ -1,6 +1,7 @@
-import sys
 import io
+import sys
 from pathlib import Path
+
 from loguru import logger as _logger
 
 # Đảm bảo stdout dùng UTF-8 trên Windows (tránh lỗi encode tiếng Việt)
@@ -45,6 +46,7 @@ def setup_logger(log_level: str = "INFO", log_dir: str = "logs") -> None:
 # khi ứng dụng chạy (xem db/connection.py hoặc main.py)
 try:
     from config.settings import settings
+
     setup_logger(settings.log_level, settings.log_dir)
 except Exception:
     setup_logger()

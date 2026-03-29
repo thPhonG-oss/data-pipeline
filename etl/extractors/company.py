@@ -1,4 +1,5 @@
 """Extractor cho thông tin doanh nghiệp: overview, shareholders, officers, subsidiaries, events."""
+
 import pandas as pd
 from vnstock_data import Company
 
@@ -21,11 +22,12 @@ class CompanyExtractor(BaseExtractor):
     def extract(self, symbol: str, data_type: str = "overview", **kwargs) -> pd.DataFrame:
         """Dispatch theo data_type — tương thích BaseExtractor interface."""
         dispatch = {
-            "overview":     self.extract_overview,
+            "overview": self.extract_overview,
             "shareholders": self.extract_shareholders,
-            "officers":     self.extract_officers,
+            "officers": self.extract_officers,
             "subsidiaries": self.extract_subsidiaries,
-            "events":       self.extract_events,
+            "events": self.extract_events,
+            "news": self.extract_news,
         }
         if data_type not in dispatch:
             raise ValueError(f"data_type không hợp lệ: '{data_type}'. Chọn: {list(dispatch)}")
@@ -81,4 +83,14 @@ class CompanyExtractor(BaseExtractor):
             df = pd.DataFrame()
         if not df.empty:
             logger.info(f"[company] {symbol} events: {len(df)} sự kiện.")
+        return df
+
+    @vnstock_retry()
+    def extract_news(self, symbol: str) -> pd.DataFrame:
+        logger.info(f"[company] {symbol} news...")
+        df = self._company(symbol).news()
+        if df is None:
+            df = pd.DataFrame()
+        if not df.empty:
+            logger.info(f"[company] {symbol} news: {len(df)} bài.")
         return df

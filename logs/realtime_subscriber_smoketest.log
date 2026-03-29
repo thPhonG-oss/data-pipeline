@@ -1,0 +1,44 @@
+[32m2026-03-23 07:26:34[0m | [1mINFO    [0m | [36mrealtime.auth[0m:[36m59[0m — [1m[auth] Lấy JWT token từ DNSE...[0m
+[32m2026-03-23 07:26:35[0m | [1mINFO    [0m | [36mrealtime.auth[0m:[36m68[0m — [1m[auth] OK — investorId=1002161780[0m
+[32m2026-03-23 07:26:35[0m | [1mINFO    [0m | [36m__main__[0m:[36m105[0m — [1m[subscriber] Kết nối MQTT broker (datafeed-lts-krx.dnse.com.vn:443)...[0m
+[32m2026-03-23 07:26:35[0m | [1mINFO    [0m | [36m__main__[0m:[36m111[0m — [1m[subscriber] Kết nối MQTT thành công.[0m
+[32m2026-03-23 07:26:35[0m | [33m[1mWARNING [0m | [36mrealtime.watchlist[0m:[36m53[0m — [33m[1m[watchlist] DB query failed: (psycopg2.errors.UndefinedColumn) column "index_code" does not exist
+LINE 1: ...symbol FROM companies WHERE status = 'listed' AND index_code...
+                                                             ^
+
+[SQL: SELECT DISTINCT symbol FROM companies WHERE status = 'listed' AND index_code LIKE '%%VN30%%' ORDER BY symbol]
+(Background on this error at: https://sqlalche.me/e/20/f405) — using VN30 fallback.[0m
+[32m2026-03-23 07:26:35[0m | [1mINFO    [0m | [36m__main__[0m:[36m154[0m — [1m[subscriber] Subscribed 60 topics (30 symbols × 2 timeframes).[0m
+[32m2026-03-23 18:45:35[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:45:36[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:45:36[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:45:38[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:45:38[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:45:42[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:45:42[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:45:50[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:45:50[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:46:06[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:46:06[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:46:39[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:46:39[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:47:43[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:47:43[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:49:43[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:49:43[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:51:43[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:51:43[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:53:43[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:53:43[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:55:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:55:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:57:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:57:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 18:59:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 18:59:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 19:01:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 19:01:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 19:03:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 19:03:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m
+[32m2026-03-23 19:05:44[0m | [31m[1mERROR   [0m | [36m__main__[0m:[36m115[0m — [31m[1m[subscriber] Kết nối MQTT thất bại — Bad user name or password[0m
+[32m2026-03-23 19:05:44[0m | [33m[1mWARNING [0m | [36m__main__[0m:[36m120[0m — [33m[1m[subscriber] Mất kết nối MQTT (Unspecified error). Sẽ reconnect...[0m

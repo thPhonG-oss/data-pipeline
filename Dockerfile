@@ -50,11 +50,18 @@ RUN pip install --no-cache-dir \
     --extra-index-url https://vnstocks.com/api/simple \
     vnii || echo "⚠️  vnii not available without API key — skipping"
 
-# ── Bước 2: Download vnstock installer (cho sponsor packages) ─────
-# Installer được download tại build time, chạy tại runtime
+# ── Bước 2: Cài vnstock_data tại build time (tránh OS fingerprint lúc runtime) ──
+# Installer chạy một lần khi build → baked vào image → không tiêu thụ thêm OS slot
+ARG VNSTOCK_API_KEY
 RUN wget -q https://vnstocks.com/files/vnstock-cli-installer.run \
-    -O /app/vnstock-cli-installer.run && \
-    chmod +x /app/vnstock-cli-installer.run
+    -O /tmp/vnstock-cli-installer.run && \
+    chmod +x /tmp/vnstock-cli-installer.run
+RUN if [ -n "$VNSTOCK_API_KEY" ]; then \
+        /tmp/vnstock-cli-installer.run -- --api-key "$VNSTOCK_API_KEY" && \
+        echo "✓ vnstock_data installed at build time"; \
+    else \
+        echo "⚠️  VNSTOCK_API_KEY not set — skipping vnstock_data installation"; \
+    fi
 
 # ── Bước 3: Cài pipeline dependencies ────────────────────────────
 # Layer riêng — rebuild khi requirements.txt thay đổi
@@ -66,7 +73,7 @@ COPY . .
 
 # ── Setup ─────────────────────────────────────────────────────────
 RUN mkdir -p logs && \
-    chmod +x entrypoint.sh
+    chmod +x entrypoint.sh entrypoint_realtime.sh
 
 # ── Health check ──────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \

@@ -18,37 +18,48 @@ VALID_INTERVALS = ["1D", "1W", "1M", "1", "5", "15", "30", "60"]
 # ── Kỳ báo cáo ───────────────────────────────────────────────────────────────
 VALID_PERIOD_TYPES = ["year", "quarter"]
 
-# ── Loại báo cáo tài chính ────────────────────────────────────────────────────
-FINANCIAL_REPORT_TYPES = ["balance_sheet", "income_statement", "cash_flow", "ratio"]
+# ── Loại báo cáo tài chính (lưu vào financial_reports) ───────────────────────
+FINANCIAL_REPORT_TYPES = ["balance_sheet", "income_statement", "cash_flow"]
 
 # ── Tên các job ETL ───────────────────────────────────────────────────────────
-JOB_SYNC_LISTING    = "sync_listing"
+JOB_SYNC_LISTING = "sync_listing"
 JOB_SYNC_FINANCIALS = "sync_financials"
-JOB_SYNC_COMPANY    = "sync_company"
-JOB_SYNC_RATIOS     = "sync_ratios"
-JOB_BACKFILL        = "backfill"
+JOB_SYNC_FINANCIALS_C = "sync_financials_c"
+JOB_SYNC_COMPANY = "sync_company"
+JOB_SYNC_HSX_COMPANY = "sync_hsx_company"
+JOB_SYNC_RATIOS = "sync_ratios"
+JOB_BACKFILL = "backfill"
+JOB_SYNC_PRICES = "sync_prices"
 
 ALL_JOBS = [
     JOB_SYNC_LISTING,
     JOB_SYNC_FINANCIALS,
+    JOB_SYNC_FINANCIALS_C,
     JOB_SYNC_COMPANY,
+    JOB_SYNC_HSX_COMPANY,
     JOB_SYNC_RATIOS,
     JOB_BACKFILL,
+    JOB_SYNC_PRICES,
 ]
 
 # ── Cột conflict key cho từng bảng (dùng cho ON CONFLICT) ─────────────────────
 CONFLICT_KEYS: dict[str, list[str]] = {
-    "icb_industries":    ["icb_code"],
-    "companies":         ["symbol"],
-    "balance_sheets":    ["symbol", "period", "period_type"],
-    "income_statements": ["symbol", "period", "period_type"],
-    "cash_flows":        ["symbol", "period", "period_type"],
-    "financial_ratios":  ["symbol", "period", "period_type"],
-    "ratio_summary":     ["symbol", "year_report", "quarter_report"],
-    "shareholders":      ["symbol", "share_holder", "snapshot_date"],
-    "officers":          ["symbol", "officer_name", "status", "snapshot_date"],
-    "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
-    "corporate_events":  ["symbol", "event_list_code", "record_date"],
+    "icb_industries": ["icb_code"],
+    "companies": ["symbol"],
+    "financial_reports": ["symbol", "period", "period_type", "statement_type"],
+    "ratio_summary": ["symbol", "year_report", "quarter_report"],
+    "shareholders": ["symbol", "share_holder", "snapshot_date"],
+    "officers": ["symbol", "officer_name", "status", "snapshot_date"],
+    "subsidiaries": ["symbol", "organ_name", "snapshot_date"],
+    "corporate_events": ["symbol", "event_list_code", "record_date"],
+    "company_news": ["vci_id", "symbol"],
+    "price_history": ["symbol", "date", "source"],
+    "price_intraday": ["symbol", "time", "resolution"],
+    # ── Approach C (008_approach_c_schema.sql) ─────────────────────
+    "fin_balance_sheet": ["symbol", "period", "period_type"],
+    "fin_income_statement": ["symbol", "period", "period_type"],
+    "fin_cash_flow": ["symbol", "period", "period_type"],
+    "fin_financial_ratios": ["symbol", "period", "period_type"],
 }
 
 # ── Cột do server tự sinh, không được ghi vào INSERT/UPDATE ───────────────────

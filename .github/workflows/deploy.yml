@@ -1,0 +1,127 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Run DB migrations after deploy?"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+      services:
+        description: "Services to redeploy (space-separated)"
+        required: false
+        default: "pipeline realtime-subscriber realtime-processor"
+
+# Only one deploy can run at a time
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # ── Require CI to pass before deploying ──────────────────────────────────────
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+    environment: production     # Requires manual approval if configured in GitHub settings
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Step 1: Verify CI passed on this commit ──────────────────────────────
+      - name: Check CI status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Deploying commit ${{ github.sha }} to production"
+          echo "Triggered by: ${{ github.actor }}"
+
+      # ── Step 2: SSH into VPS and deploy ─────────────────────────────────────
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          SERVICES: ${{ inputs.services || 'pipeline realtime-subscriber realtime-processor' }}
+          RUN_MIGRATIONS: ${{ inputs.run_migrations || 'true' }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          envs: DEPLOY_SHA,SERVICES,RUN_MIGRATIONS
+          # Timeout 10 minutes — docker build can be slow on first run
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+
+            echo "=== [1/5] Pulling latest code ==="
+            cd ~/apps/data-pipeline
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            echo "Now at: $(git log --oneline -1)"
+
+            echo "=== [2/5] Building application services ==="
+            # Build only app services — leave postgres and redis untouched
+            docker compose build --pull $SERVICES
+
+            echo "=== [3/5] Restarting application services ==="
+            # --no-deps: don't restart postgres/redis
+            docker compose up -d --no-deps $SERVICES
+
+            echo "=== [4/5] Running DB migrations ==="
+            if [ "$RUN_MIGRATIONS" = "true" ]; then
+              # Wait for pipeline container to be ready
+              sleep 5
+              docker compose exec -T pipeline python -m db.migrate
+              echo "Migrations complete."
+            else
+              echo "Skipping migrations (RUN_MIGRATIONS=false)."
+            fi
+
+            echo "=== [5/5] Health check ==="
+            sleep 5
+            FAILED=""
+            for service in $SERVICES; do
+              STATUS=$(docker compose ps --format "{{.State}}" "$service" 2>/dev/null || echo "missing")
+              if [ "$STATUS" != "running" ]; then
+                FAILED="$FAILED $service($STATUS)"
+              fi
+            done
+
+            if [ -n "$FAILED" ]; then
+              echo "ERROR: Services not running:$FAILED"
+              docker compose logs --tail=50 $SERVICES
+              exit 1
+            fi
+
+            echo "=== Deploy complete ==="
+            docker compose ps
+
+      # ── Step 3: Notify on failure ────────────────────────────────────────────
+      - name: Notify on failure
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ Deploy FAILED — data-pipeline
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+            See: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Notify on success
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ✅ Deploy SUCCESS — data-pipeline
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}

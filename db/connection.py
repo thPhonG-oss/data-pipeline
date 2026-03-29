@@ -1,6 +1,7 @@
 """SQLAlchemy engine, session factory và kiểm tra kết nối."""
+
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -10,8 +11,8 @@ from config.settings import settings
 # ── Engine ────────────────────────────────────────────────────────────────────
 engine = create_engine(
     settings.database_url,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=settings.max_workers + 2,
+    max_overflow=settings.max_workers,
     pool_pre_ping=True,  # Kiểm tra connection trước khi dùng
     echo=False,
 )

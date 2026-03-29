@@ -2,7 +2,7 @@ services:
 
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: stockapp_db
     restart: unless-stopped
     environment:
@@ -11,29 +11,96 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d   # Tự chạy migrations khi init lần đầu
+      - ./db/migrations:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"   # Expose để web application kết nối từ ngoài
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ── Pipeline Service ────────────────────────────────────────────────────────
+  # ── Redis (message broker for real-time pipeline) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: stockapp_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Batch Pipeline (APScheduler) ─────────────────────────────────────────────
   pipeline:
-    build: .
+    build:
+      context: .
+      args:
+        VNSTOCK_API_KEY: ${VNSTOCK_API_KEY}
     container_name: stockapp_pipeline
     restart: unless-stopped
+    command: python main.py schedule
     env_file: .env
     environment:
-      DB_HOST: postgres   # Kết nối nội bộ qua tên service, không qua localhost
+      DB_HOST: postgres
+      REDIS_HOST: redis
     volumes:
-      - ./logs:/app/logs  # Log ghi ra máy host — xem được mà không cần vào container
-      # Flag file .vnstock_installed nằm trong ./logs/ → tồn tại qua các lần rebuild
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
 
+  # ── Real-time: MQTT Subscriber ───────────────────────────────────────────────
+  realtime-subscriber:
+    build: .
+    container_name: stockapp_rt_subscriber
+    restart: unless-stopped
+    entrypoint: ["./entrypoint_realtime.sh"]
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      VNSTOCK_API_KEY: ""   # không cần vnstock
+    command: ["python", "-m", "realtime.subscriber"]
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Real-time: Stream Processor ──────────────────────────────────────────────
+  realtime-processor:
+    build: .
+    container_name: stockapp_rt_processor
+    restart: unless-stopped
+    entrypoint: ["./entrypoint_realtime.sh"]
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      VNSTOCK_API_KEY: ""   # không cần vnstock
+    command: ["python", "-m", "realtime.processor"]
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+
 volumes:
   postgres_data:
+  redis_data:

@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Lint + Unit Tests ─────────────────────────────────────────────────
+  test:
+    name: Lint & Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-test.txt
+
+      - name: Install test dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Lint with ruff
+        run: |
+          ruff check . --output-format=github
+          ruff format --check .
+
+      - name: Run unit tests
+        env:
+          # Dummy env vars so pydantic-settings doesn't fail on import
+          DB_PASSWORD: ci_dummy_password
+          DNSE_USERNAME: ci@example.com
+          DNSE_PASSWORD: ci_dummy
+        run: |
+          pytest tests/ \
+            --cov=etl \
+            --cov=realtime \
+            --cov=config \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -v
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+
+  # ── Job 2: Docker Build Check ─────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    # Only run on PRs and main/develop pushes (skip feature branches to save minutes)
+    if: >
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          # Do NOT pass VNSTOCK_API_KEY — verify image builds without it
+          build-args: |
+            VNSTOCK_API_KEY=
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Tag locally for potential downstream jobs
+          tags: stockapp-pipeline:ci-${{ github.sha }}
