@@ -1,5 +1,5 @@
 """DNSE authentication manager — JWT token + investorId."""
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import requests
 
@@ -52,7 +52,7 @@ class DNSEAuthManager:
     def _needs_refresh(self) -> bool:
         if self._token is None or self._token_fetched_at is None:
             return True
-        age = datetime.now(tz=timezone.utc) - self._token_fetched_at
+        age = datetime.now(tz=UTC) - self._token_fetched_at
         return age >= timedelta(hours=_TOKEN_TTL_HOURS - _REFRESH_BEFORE_HOURS)
 
     def _refresh(self) -> None:
@@ -60,7 +60,7 @@ class DNSEAuthManager:
         resp = requests.post(_AUTH_URL, json={"username": self._username, "password": self._password}, timeout=10)
         resp.raise_for_status()
         self._token = resp.json()["token"]
-        self._token_fetched_at = datetime.now(tz=timezone.utc)
+        self._token_fetched_at = datetime.now(tz=UTC)
 
         resp2 = requests.get(_ME_URL, headers={"Authorization": f"Bearer {self._token}"}, timeout=10)
         resp2.raise_for_status()

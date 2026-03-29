@@ -3,7 +3,6 @@ import pytest
 
 from realtime.processor import _transform_message, _validate_message
 
-
 _VALID_MSG = {
     "symbol": "HPG",
     "time": "2026-03-21T09:01:00+07:00",

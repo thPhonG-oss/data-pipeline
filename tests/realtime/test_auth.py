@@ -1,5 +1,5 @@
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -50,7 +50,7 @@ def test_token_refreshed_when_near_expiry(auth):
         # Simulate token fetched 7.5h ago (within 1h expiry window of 8h token)
         auth._token = "old_tok"
         auth._investor_id = "1"
-        auth._token_fetched_at = datetime.now(tz=timezone.utc) - timedelta(hours=7, minutes=30)
+        auth._token_fetched_at = datetime.now(tz=UTC) - timedelta(hours=7, minutes=30)
 
         token = auth.get_token()
         assert token == "new_tok"

@@ -1,7 +1,7 @@
 """Transformer cho dữ liệu trading: ratio_summary."""
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pandas as pd
 
@@ -149,7 +149,7 @@ class TradingTransformer(BaseTransformer):
         df["symbol"] = symbol
         df["quarter_report"] = 0      # 0 = annual snapshot; NULL không dùng được làm conflict key
         df["inventory_days"] = None    # API không cung cấp trực tiếp
-        df["fetched_at"] = datetime.now(tz=timezone.utc)
+        df["fetched_at"] = datetime.now(tz=UTC)
 
         # 3. Ép kiểu BIGINT
         for col in _BIGINT_COLS:

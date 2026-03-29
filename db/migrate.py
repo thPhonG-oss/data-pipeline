@@ -42,7 +42,6 @@ def _split_sql(sql: str) -> list[str]:
     """
     statements: list[str] = []
     current: list[str] = []
-    in_line_comment = False
     dollar_quote: str | None = None  # e.g. "$$" or "$tag$"
     i = 0
 

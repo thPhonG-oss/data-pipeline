@@ -1,11 +1,13 @@
 """Kiểm tra kết quả smoke test real-time pipeline."""
 import sys
+
 sys.stdout.reconfigure(encoding="utf-8")
 
-import redis
-from sqlalchemy import text
-from config.settings import settings
-from db.connection import engine
+import redis  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+
+from config.settings import settings  # noqa: E402
+from db.connection import engine  # noqa: E402
 
 print("=" * 60)
 print("REAL-TIME PIPELINE — SMOKE TEST CHECK")
@@ -17,7 +19,7 @@ try:
     ping = r.ping()
     len_1m = r.xlen("stream:ohlc:1m") if r.exists("stream:ohlc:1m") else 0
     len_5m = r.xlen("stream:ohlc:5m") if r.exists("stream:ohlc:5m") else 0
-    print(f"\n[Redis]")
+    print("\n[Redis]")
     print(f"  stream:ohlc:1m  : {len_1m:,} messages")
     print(f"  stream:ohlc:5m  : {len_5m:,} messages")
 except Exception as e:

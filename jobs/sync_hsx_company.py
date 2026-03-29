@@ -16,7 +16,7 @@ Cách dùng:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from config.constants import JOB_SYNC_HSX_COMPANY
 from etl.extractors.hsx_company import HSXCompanyExtractor
@@ -44,7 +44,7 @@ class SyncHSXCompanyJob:
         log_id = self._loader.load_log(
             JOB_SYNC_HSX_COMPANY, symbol="ALL", status="running"
         )
-        start = datetime.now(tz=timezone.utc)
+        start = datetime.now(tz=UTC)
 
         try:
             # ── Extract ───────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ class SyncHSXCompanyJob:
                 update_columns=_UPDATE_COLS,
             )
 
-            elapsed = (datetime.now(tz=timezone.utc) - start).total_seconds()
+            elapsed = (datetime.now(tz=UTC) - start).total_seconds()
             logger.info(
                 f"[sync_hsx_company] Hoàn tất {elapsed:.1f}s | "
                 f"Fetched: {len(df)} | Upserted: {upserted}"

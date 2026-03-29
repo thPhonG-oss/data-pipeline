@@ -1,4 +1,5 @@
 """PostgreSQL loader — upsert DataFrame vào bảng bằng ON CONFLICT DO UPDATE."""
+from datetime import UTC
 from typing import Optional
 
 import pandas as pd
@@ -27,7 +28,7 @@ class PostgresLoader(BaseLoader):
         )
     """
 
-    def __init__(self, chunk_size: Optional[int] = None) -> None:
+    def __init__(self, chunk_size: int | None = None) -> None:
         self.chunk_size = chunk_size or settings.db_chunk_size
         self._metadata = MetaData()
 
@@ -51,7 +52,7 @@ class PostgresLoader(BaseLoader):
         self,
         table: Table,
         conflict_columns: list[str],
-        update_columns: Optional[list[str]],
+        update_columns: list[str] | None,
     ) -> list[str]:
         """
         Xác định danh sách cột sẽ UPDATE khi có conflict.
@@ -70,9 +71,9 @@ class PostgresLoader(BaseLoader):
         df: pd.DataFrame,
         table: str,
         conflict_columns: list[str],
-        update_columns: Optional[list[str]] = None,
+        update_columns: list[str] | None = None,
         on_conflict: str = "update",
-        jsonb_merge_columns: Optional[list[str]] = None,
+        jsonb_merge_columns: list[str] | None = None,
     ) -> int:
         """
         Insert/upsert toàn bộ DataFrame vào bảng PostgreSQL theo từng chunk.
@@ -138,12 +139,12 @@ class PostgresLoader(BaseLoader):
     def load_log(
         self,
         job_name: str,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         status: str = "running",
         records_fetched: int = 0,
         records_inserted: int = 0,
-        error_message: Optional[str] = None,
-        log_id: Optional[int] = None,
+        error_message: str | None = None,
+        log_id: int | None = None,
     ) -> int:
         """
         Ghi hoặc cập nhật một dòng vào pipeline_logs.
@@ -166,7 +167,7 @@ class PostgresLoader(BaseLoader):
                         records_fetched=records_fetched,
                         records_inserted=records_inserted,
                         error_message=error_message,
-                        started_at=datetime.now(tz=timezone.utc),
+                        started_at=datetime.now(tz=UTC),
                     ).returning(tbl.c.id)
                 )
                 return result.scalar_one()
@@ -180,7 +181,7 @@ class PostgresLoader(BaseLoader):
                         records_fetched=records_fetched,
                         records_inserted=records_inserted,
                         error_message=error_message,
-                        finished_at=datetime.now(tz=timezone.utc),
+                        finished_at=datetime.now(tz=UTC),
                     )
                 )
                 return log_id

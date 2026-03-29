@@ -1,5 +1,5 @@
 """Kiểm tra pipeline_logs và gửi alert khi job thất bại liên tiếp."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from sqlalchemy import text
 
@@ -18,7 +18,7 @@ def check_and_alert(threshold: int | None = None, window_hours: int = 24) -> Non
     if threshold is None:
         threshold = settings.alert_fail_threshold
 
-    since = datetime.now(tz=timezone.utc) - timedelta(hours=window_hours)
+    since = datetime.now(tz=UTC) - timedelta(hours=window_hours)
 
     with engine.connect() as conn:
         rows = conn.execute(

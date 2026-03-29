@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import psycopg2
+
 from config.settings import settings
 from utils.logger import logger
 

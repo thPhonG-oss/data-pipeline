@@ -8,7 +8,7 @@ import os
 import signal
 import socket
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -63,7 +63,7 @@ def _transform_message(msg: dict) -> dict:
         "close":      int(round(float(msg["close"]))),
         "volume":     int(float(msg.get("volume") or 0)),
         "source":     "dnse_mdds",
-        "fetched_at": datetime.now(tz=timezone.utc),
+        "fetched_at": datetime.now(tz=UTC),
     }
 
 

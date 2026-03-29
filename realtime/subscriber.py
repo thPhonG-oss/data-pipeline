@@ -178,8 +178,9 @@ class MQTTSubscriber:
 
 
 if __name__ == "__main__":
-    from realtime.session_guard import is_trading_hours
     import sys
+
+    from realtime.session_guard import is_trading_hours
 
     if not is_trading_hours():
         logger.info("[subscriber] Ngoài giờ giao dịch — không khởi động.")

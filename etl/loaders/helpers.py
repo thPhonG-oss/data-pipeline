@@ -1,6 +1,7 @@
 """Hàm tiện ích dùng chung cho các loaders."""
 import math
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import numpy as np
 import pandas as pd

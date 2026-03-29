@@ -1,9 +1,11 @@
 import json
+import os
+import ssl
+from random import randint
+
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
-from requests import post, get
-from random import randint
-import os, ssl
+from requests import get, post
 
 # Nếu có InvestorID và Token rồi thì có thể comment đoạn này vào
 load_dotenv()
@@ -33,7 +35,7 @@ def authenticate(username, password):
 
 def get_investor_info(token = None):
     try:
-        url = f"https://api.dnse.com.vn/user-service/api/me"
+        url = "https://api.dnse.com.vn/user-service/api/me"
         headers = {
             "authorization": f"Bearer {token}"
         }

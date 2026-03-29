@@ -12,7 +12,7 @@ Cách so sánh:
   diff_pct = |VCI - KBS*1000| / |VCI| × 100
   Flag khi diff_pct > 2%
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pandas as pd
 from sqlalchemy import text
@@ -138,7 +138,7 @@ class FinanceCrossValidator:
         col_map: dict,
     ) -> int:
         flags = []
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         for _, vci_row in df_vci.iterrows():
             period = str(vci_row.get("period", ""))
