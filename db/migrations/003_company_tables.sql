@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS corporate_events (
     source_url       TEXT,
     fetched_at       TIMESTAMP    DEFAULT NOW(),
 
-    CONSTRAINT uq_corporate_events UNIQUE (symbol, event_list_code, record_date)
+    CONSTRAINT uq_corporate_events UNIQUE NULLS NOT DISTINCT (symbol, event_list_code, record_date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_symbol      ON corporate_events(symbol);

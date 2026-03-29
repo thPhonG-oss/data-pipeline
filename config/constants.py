@@ -22,17 +22,21 @@ VALID_PERIOD_TYPES = ["year", "quarter"]
 FINANCIAL_REPORT_TYPES = ["balance_sheet", "income_statement", "cash_flow"]
 
 # ── Tên các job ETL ───────────────────────────────────────────────────────────
-JOB_SYNC_LISTING    = "sync_listing"
-JOB_SYNC_FINANCIALS = "sync_financials"
-JOB_SYNC_COMPANY    = "sync_company"
-JOB_SYNC_RATIOS     = "sync_ratios"
-JOB_BACKFILL        = "backfill"
-JOB_SYNC_PRICES     = "sync_prices"
+JOB_SYNC_LISTING       = "sync_listing"
+JOB_SYNC_FINANCIALS    = "sync_financials"
+JOB_SYNC_FINANCIALS_C  = "sync_financials_c"
+JOB_SYNC_COMPANY       = "sync_company"
+JOB_SYNC_HSX_COMPANY   = "sync_hsx_company"
+JOB_SYNC_RATIOS        = "sync_ratios"
+JOB_BACKFILL           = "backfill"
+JOB_SYNC_PRICES        = "sync_prices"
 
 ALL_JOBS = [
     JOB_SYNC_LISTING,
     JOB_SYNC_FINANCIALS,
+    JOB_SYNC_FINANCIALS_C,
     JOB_SYNC_COMPANY,
+    JOB_SYNC_HSX_COMPANY,
     JOB_SYNC_RATIOS,
     JOB_BACKFILL,
     JOB_SYNC_PRICES,
@@ -48,9 +52,14 @@ CONFLICT_KEYS: dict[str, list[str]] = {
     "officers":          ["symbol", "officer_name", "status", "snapshot_date"],
     "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
     "corporate_events":  ["symbol", "event_list_code", "record_date"],
-    "company_news":      ["vci_id", "symbol"],
-    "price_history":     ["symbol", "date", "source"],
-    "price_intraday":    ["symbol", "time", "resolution"],
+    "company_news":          ["vci_id", "symbol"],
+    "price_history":         ["symbol", "date", "source"],
+    "price_intraday":        ["symbol", "time", "resolution"],
+    # ── Approach C (008_approach_c_schema.sql) ─────────────────────
+    "fin_balance_sheet":     ["symbol", "period", "period_type"],
+    "fin_income_statement":  ["symbol", "period", "period_type"],
+    "fin_cash_flow":         ["symbol", "period", "period_type"],
+    "fin_financial_ratios":  ["symbol", "period", "period_type"],
 }
 
 # ── Cột do server tự sinh, không được ghi vào INSERT/UPDATE ───────────────────

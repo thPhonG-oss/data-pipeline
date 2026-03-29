@@ -1,58 +1,45 @@
 -- ============================================================
--- Migration 005: financial_reports
+-- Migration 005: Financial Schema — ENUMs + Approach C (4 tables)
 --
--- Bảng thống nhất BCĐKT / KQKD / LCTT cho 4 mẫu biểu:
---   non_financial (sản xuất/bán lẻ/công nghệ)
---   banking       (ICB 3010xxxx)
---   securities    (ICB 3020xxxx)
---   insurance     (ICB 3030xxxx)
+-- Tables:
+--   fin_balance_sheet       — Bảng cân đối kế toán
+--   fin_income_statement    — Kết quả hoạt động kinh doanh
+--   fin_cash_flow           — Lưu chuyển tiền tệ
+--   fin_financial_ratios    — Chỉ số tài chính lịch sử (ratio API)
 --
--- Conflict key: (symbol, period, period_type, statement_type)
+-- Mỗi bảng có:
+--   template  → phân biệt cấu trúc BCTC (non_financial/banking/securities/insurance)
+--   icb_code  → phân ngành cho analytics/screener không cần JOIN companies
 -- ============================================================
 
 -- ── ENUM types ────────────────────────────────────────────────────────────────
 
 DO $$ BEGIN
-    CREATE TYPE statement_type_enum AS ENUM (
-        'balance_sheet',
-        'income_statement',
-        'cash_flow'
-    );
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE period_type_enum AS ENUM (
-        'year',
-        'quarter'
-    );
+    CREATE TYPE period_type_enum AS ENUM ('year', 'quarter');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
     CREATE TYPE fin_template_enum AS ENUM (
-        'non_financial',
-        'banking',
-        'securities',
-        'insurance'
+        'non_financial', 'banking', 'securities', 'insurance'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- ── Bảng chính ────────────────────────────────────────────────────────────────
+-- ============================================================
+-- Bảng 1: fin_balance_sheet
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fin_balance_sheet (
 
-CREATE TABLE IF NOT EXISTS financial_reports (
-
-    -- ── Định danh ─────────────────────────────────────────────────────────────
     id              BIGSERIAL            PRIMARY KEY,
     symbol          VARCHAR(10)          NOT NULL REFERENCES companies(symbol),
     period          VARCHAR(10)          NOT NULL,
     period_type     period_type_enum     NOT NULL,
-    statement_type  statement_type_enum  NOT NULL,
     template        fin_template_enum    NOT NULL,
     source          VARCHAR(20)          NOT NULL DEFAULT 'vci',
+    icb_code        VARCHAR(10),
 
-    -- ── Cross-industry BS core ─────────────────────────────────────────────
+    -- ── Cross-industry ────────────────────────────────────────────────────────
     cash_and_equivalents        NUMERIC(20, 2),
     short_term_investments      NUMERIC(20, 2),
     total_current_assets        NUMERIC(20, 2),
@@ -72,7 +59,7 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     long_term_debt              NUMERIC(20, 2),
     goodwill                    NUMERIC(20, 2),
 
-    -- ── Non-financial BS ──────────────────────────────────────────────────────
+    -- ── Non-financial ─────────────────────────────────────────────────────────
     inventory_gross             NUMERIC(20, 2),
     inventory_allowance         NUMERIC(20, 2),
     inventory_net               NUMERIC(20, 2),
@@ -82,7 +69,7 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     ppe_net                     NUMERIC(20, 2),
     construction_in_progress    NUMERIC(20, 2),
 
-    -- ── Banking BS ────────────────────────────────────────────────────────────
+    -- ── Banking ───────────────────────────────────────────────────────────────
     deposits_at_state_bank      NUMERIC(20, 2),
     interbank_deposits          NUMERIC(20, 2),
     trading_securities          NUMERIC(20, 2),
@@ -93,20 +80,47 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     interbank_borrowings        NUMERIC(20, 2),
     bonds_issued                NUMERIC(20, 2),
 
-    -- ── Insurance BS ──────────────────────────────────────────────────────────
-    financial_investments       NUMERIC(20, 2),
-    insurance_premium_receivables NUMERIC(20, 2),
-    insurance_technical_reserves  NUMERIC(20, 2),
-    insurance_claims_payable    NUMERIC(20, 2),
+    -- ── Insurance ─────────────────────────────────────────────────────────────
+    financial_investments            NUMERIC(20, 2),
+    insurance_premium_receivables    NUMERIC(20, 2),
+    insurance_technical_reserves     NUMERIC(20, 2),
+    insurance_claims_payable         NUMERIC(20, 2),
 
-    -- ── Securities BS ─────────────────────────────────────────────────────────
+    -- ── Securities ────────────────────────────────────────────────────────────
     margin_lending              NUMERIC(20, 2),
     fvtpl_assets                NUMERIC(20, 2),
     available_for_sale_assets   NUMERIC(20, 2),
     settlement_receivables      NUMERIC(20, 2),
     settlement_payables         NUMERIC(20, 2),
 
-    -- ── Cross-industry IS core ─────────────────────────────────────────────
+    -- ── Audit ─────────────────────────────────────────────────────────────────
+    raw_details                 JSONB        NOT NULL DEFAULT '{}',
+    fetched_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_fin_bs UNIQUE (symbol, period, period_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fin_bs_symbol_period   ON fin_balance_sheet (symbol, period_type, period DESC);
+CREATE INDEX IF NOT EXISTS idx_fin_bs_period_template ON fin_balance_sheet (period, period_type, template);
+CREATE INDEX IF NOT EXISTS idx_fin_bs_icb_code        ON fin_balance_sheet (icb_code);
+CREATE INDEX IF NOT EXISTS idx_fin_bs_annual
+    ON fin_balance_sheet (symbol, period DESC) WHERE period_type = 'year';
+
+-- ============================================================
+-- Bảng 2: fin_income_statement
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fin_income_statement (
+
+    id              BIGSERIAL            PRIMARY KEY,
+    symbol          VARCHAR(10)          NOT NULL REFERENCES companies(symbol),
+    period          VARCHAR(10)          NOT NULL,
+    period_type     period_type_enum     NOT NULL,
+    template        fin_template_enum    NOT NULL,
+    source          VARCHAR(20)          NOT NULL DEFAULT 'vci',
+    icb_code        VARCHAR(10),
+
+    -- ── Cross-industry ────────────────────────────────────────────────────────
     net_revenue                 NUMERIC(20, 2),
     operating_profit            NUMERIC(20, 2),
     ebt                         NUMERIC(20, 2),
@@ -116,7 +130,7 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     eps_basic                   NUMERIC(15, 2),
     eps_diluted                 NUMERIC(20, 4),
 
-    -- ── Non-financial IS ──────────────────────────────────────────────────────
+    -- ── Non-financial ─────────────────────────────────────────────────────────
     gross_revenue               NUMERIC(20, 2),
     revenue_deductions          NUMERIC(20, 2),
     cost_of_goods_sold          NUMERIC(20, 2),
@@ -128,29 +142,56 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     interest_expense            NUMERIC(20, 2),
     income_tax                  NUMERIC(20, 2),
 
-    -- ── Banking IS ────────────────────────────────────────────────────────────
-    interest_income             NUMERIC(20, 2),
-    fee_and_commission_income   NUMERIC(20, 2),
-    forex_trading_income        NUMERIC(20, 2),
-    trading_securities_income   NUMERIC(20, 2),
-    investment_securities_income NUMERIC(20, 2),
-    other_income                NUMERIC(20, 2),
-    total_operating_income      NUMERIC(20, 2),
-    operating_expenses          NUMERIC(20, 2),
-    net_interest_income         NUMERIC(20, 2),
-    pre_provision_profit        NUMERIC(20, 2),
-    credit_provision_expense    NUMERIC(20, 2),
+    -- ── Banking ───────────────────────────────────────────────────────────────
+    interest_income                  NUMERIC(20, 2),
+    fee_and_commission_income        NUMERIC(20, 2),
+    forex_trading_income             NUMERIC(20, 2),
+    trading_securities_income        NUMERIC(20, 2),
+    investment_securities_income     NUMERIC(20, 2),
+    other_income                     NUMERIC(20, 2),
+    total_operating_income           NUMERIC(20, 2),
+    operating_expenses               NUMERIC(20, 2),
+    net_interest_income              NUMERIC(20, 2),
+    pre_provision_profit             NUMERIC(20, 2),
+    credit_provision_expense         NUMERIC(20, 2),
 
-    -- ── Insurance IS ──────────────────────────────────────────────────────────
-    net_insurance_premium       NUMERIC(20, 2),
-    net_insurance_claims        NUMERIC(20, 2),
-    insurance_acquisition_costs NUMERIC(20, 2),
+    -- ── Insurance ─────────────────────────────────────────────────────────────
+    net_insurance_premium            NUMERIC(20, 2),
+    net_insurance_claims             NUMERIC(20, 2),
+    insurance_acquisition_costs      NUMERIC(20, 2),
 
-    -- ── Securities IS ─────────────────────────────────────────────────────────
+    -- ── Securities ────────────────────────────────────────────────────────────
     brokerage_revenue           NUMERIC(20, 2),
     advisory_revenue            NUMERIC(20, 2),
 
-    -- ── CF core (all templates) ───────────────────────────────────────────────
+    -- ── Audit ─────────────────────────────────────────────────────────────────
+    raw_details                 JSONB        NOT NULL DEFAULT '{}',
+    fetched_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_fin_is UNIQUE (symbol, period, period_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fin_is_symbol_period   ON fin_income_statement (symbol, period_type, period DESC);
+CREATE INDEX IF NOT EXISTS idx_fin_is_period_template ON fin_income_statement (period, period_type, template);
+CREATE INDEX IF NOT EXISTS idx_fin_is_icb_code        ON fin_income_statement (icb_code);
+CREATE INDEX IF NOT EXISTS idx_fin_is_annual
+    ON fin_income_statement (symbol, period DESC) WHERE period_type = 'year';
+
+-- ============================================================
+-- Bảng 3: fin_cash_flow
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fin_cash_flow (
+
+    id              BIGSERIAL            PRIMARY KEY,
+    symbol          VARCHAR(10)          NOT NULL REFERENCES companies(symbol),
+    period          VARCHAR(10)          NOT NULL,
+    period_type     period_type_enum     NOT NULL,
+    template        fin_template_enum    NOT NULL,
+    source          VARCHAR(20)          NOT NULL DEFAULT 'vci',
+    icb_code        VARCHAR(10),
+
+    -- ── CF (all templates) ────────────────────────────────────────────────────
     cf_ebt                      NUMERIC(20, 2),
     depreciation_amortization   NUMERIC(20, 2),
     cf_interest_expense         NUMERIC(20, 2),
@@ -169,63 +210,103 @@ CREATE TABLE IF NOT EXISTS financial_reports (
     cash_beginning              NUMERIC(20, 2),
     cash_ending                 NUMERIC(20, 2),
 
-    -- ── Raw + audit ───────────────────────────────────────────────────────────
+    -- ── Audit ─────────────────────────────────────────────────────────────────
     raw_details                 JSONB        NOT NULL DEFAULT '{}',
     fetched_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     created_at                  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT uq_financial_reports
-        UNIQUE (symbol, period, period_type, statement_type)
+    CONSTRAINT uq_fin_cf UNIQUE (symbol, period, period_type)
 );
 
--- ── Indexes ───────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_fin_cf_symbol_period ON fin_cash_flow (symbol, period_type, period DESC);
+CREATE INDEX IF NOT EXISTS idx_fin_cf_icb_code      ON fin_cash_flow (icb_code);
+CREATE INDEX IF NOT EXISTS idx_fin_cf_annual
+    ON fin_cash_flow (symbol, period DESC) WHERE period_type = 'year';
 
-CREATE INDEX IF NOT EXISTS idx_fr_symbol_period
-    ON financial_reports (symbol, period_type, period DESC);
+-- ============================================================
+-- Bảng 4: fin_financial_ratios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fin_financial_ratios (
 
-CREATE INDEX IF NOT EXISTS idx_fr_period_template
-    ON financial_reports (period, period_type, template);
+    id              BIGSERIAL            PRIMARY KEY,
+    symbol          VARCHAR(10)          NOT NULL REFERENCES companies(symbol),
+    period          VARCHAR(10)          NOT NULL,
+    period_type     period_type_enum     NOT NULL,
+    template        fin_template_enum    NOT NULL,
+    source          VARCHAR(20)          NOT NULL DEFAULT 'vci',
+    icb_code        VARCHAR(10),
 
-CREATE INDEX IF NOT EXISTS idx_fr_symbol_stmt
-    ON financial_reports (symbol, statement_type);
+    -- ── Market data ───────────────────────────────────────────────────────────
+    shares_outstanding_millions  BIGINT,
+    market_cap                   NUMERIC(22, 2),
+    dividend_yield               NUMERIC(8, 4),
 
-CREATE INDEX IF NOT EXISTS idx_fr_raw_details_gin
-    ON financial_reports USING GIN (raw_details);
+    -- ── Valuation ─────────────────────────────────────────────────────────────
+    pe_ratio        NUMERIC(12, 4),
+    pb_ratio        NUMERIC(12, 4),
+    ps_ratio        NUMERIC(12, 4),
+    price_to_cf     NUMERIC(12, 4),
+    ev_to_ebitda    NUMERIC(12, 4),
 
-CREATE INDEX IF NOT EXISTS idx_fr_annual
-    ON financial_reports (symbol, period DESC)
-    WHERE period_type = 'year';
+    -- ── Liquidity ─────────────────────────────────────────────────────────────
+    cash_ratio      NUMERIC(10, 4),
+    quick_ratio     NUMERIC(10, 4),
+    current_ratio   NUMERIC(10, 4),
 
--- ── CHECK Constraints (NOT VALID) ────────────────────────────────────────────
+    -- ── Leverage ──────────────────────────────────────────────────────────────
+    debt_to_equity      NUMERIC(10, 4),
+    financial_leverage  NUMERIC(10, 4),
 
-DO $$ BEGIN
-    ALTER TABLE financial_reports
-        ADD CONSTRAINT chk_banking_null_inventory
-        CHECK (NOT (template = 'banking' AND inventory_net IS NOT NULL))
-        NOT VALID;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+    -- ── Profitability (decimal: 0.2763 = 27.63%) ──────────────────────────────
+    roe             NUMERIC(8, 4),
+    roa             NUMERIC(8, 4),
+    roic            NUMERIC(8, 4),
+    gross_margin    NUMERIC(8, 4),
+    ebit_margin     NUMERIC(8, 4),
+    pre_tax_margin  NUMERIC(8, 4),
+    net_margin      NUMERIC(8, 4),
 
-DO $$ BEGIN
-    ALTER TABLE financial_reports
-        ADD CONSTRAINT chk_banking_null_cogs
-        CHECK (NOT (template = 'banking' AND cost_of_goods_sold IS NOT NULL))
-        NOT VALID;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+    -- ── Activity ──────────────────────────────────────────────────────────────
+    asset_turnover          NUMERIC(10, 4),
+    fixed_asset_turnover    NUMERIC(10, 4),
+    days_receivable         NUMERIC(10, 2),
+    days_inventory          NUMERIC(10, 2),
+    days_payable            NUMERIC(10, 2),
+    cash_cycle              NUMERIC(10, 2),
 
-DO $$ BEGIN
-    ALTER TABLE financial_reports
-        ADD CONSTRAINT chk_nonfinancial_null_loans
-        CHECK (NOT (template = 'non_financial' AND customer_loans_gross IS NOT NULL))
-        NOT VALID;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+    -- ── Absolute values ───────────────────────────────────────────────────────
+    ebit    NUMERIC(22, 2),
+    ebitda  NUMERIC(22, 2),
 
-DO $$ BEGIN
-    ALTER TABLE financial_reports
-        ADD CONSTRAINT chk_nonfinancial_null_nii
-        CHECK (NOT (template = 'non_financial' AND net_interest_income IS NOT NULL))
-        NOT VALID;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+    -- ── Banking-specific (NULL cho non-financial/securities/insurance) ─────────
+    nim                       NUMERIC(8, 4),
+    avg_earning_asset_yield   NUMERIC(8, 4),
+    avg_cost_of_funds         NUMERIC(8, 4),
+    non_interest_income_ratio NUMERIC(8, 4),
+    cir                       NUMERIC(8, 4),
+    car                       NUMERIC(8, 4),
+    ldr                       NUMERIC(8, 4),
+    npl_ratio                 NUMERIC(8, 4),
+    npl_coverage              NUMERIC(8, 4),
+    provision_to_loans        NUMERIC(8, 4),
+    loan_growth               NUMERIC(8, 4),
+    deposit_growth            NUMERIC(8, 4),
+    equity_to_assets          NUMERIC(8, 4),
+    casa_ratio                NUMERIC(8, 4),
+
+    -- ── Audit ─────────────────────────────────────────────────────────────────
+    raw_details     JSONB        NOT NULL DEFAULT '{}',
+    fetched_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_fin_ratios UNIQUE (symbol, period, period_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fin_ratios_symbol_period ON fin_financial_ratios (symbol, period_type, period DESC);
+CREATE INDEX IF NOT EXISTS idx_fin_ratios_icb_code      ON fin_financial_ratios (icb_code);
+CREATE INDEX IF NOT EXISTS idx_fin_ratios_template      ON fin_financial_ratios (template);
+CREATE INDEX IF NOT EXISTS idx_fin_ratios_annual
+    ON fin_financial_ratios (symbol, period DESC) WHERE period_type = 'year';
+CREATE INDEX IF NOT EXISTS idx_fin_ratios_roe_annual
+    ON fin_financial_ratios (roe DESC)
+    WHERE period_type = 'year' AND roe IS NOT NULL;

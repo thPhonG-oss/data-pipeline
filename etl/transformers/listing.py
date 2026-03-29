@@ -164,8 +164,10 @@ class ListingTransformer(BaseTransformer):
                         delisted_date, company_id, fund_type, isin,
                         short_name_eng, tax_code, index_code
         Output columns: symbol, company_name, company_name_eng, short_name,
-                        exchange, type, status, icb_code,
+                        exchange, type, status,
                         listed_date, delisted_date, company_id, isin, tax_code
+        Note: icb_code intentionally excluded — populated later by sync_company
+              to avoid overwriting on every listing sync.
         """
         df = df.copy()
 
@@ -205,12 +207,11 @@ class ListingTransformer(BaseTransformer):
                 .replace("nan", None)
             )
 
-        # icb_code không có trong all_symbols() → để None, sẽ cập nhật khi sync_company chạy
-        df["icb_code"] = None
-
+        # icb_code không có trong all_symbols() — không đưa vào upsert payload để
+        # tránh overwrite giá trị đã được sync_company cập nhật.
         df = df[[
             "symbol", "company_name", "company_name_eng", "short_name",
-            "exchange", "type", "status", "icb_code",
+            "exchange", "type", "status",
             "listed_date", "delisted_date", "company_id", "isin", "tax_code",
         ]]
 

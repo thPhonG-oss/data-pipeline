@@ -1,0 +1,28 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    "venv",
+    ".venv",
+    "everything-claude-code",
+    "jupyter_test",
+    "scripts",
+]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = isort, UP = pyupgrade
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+    "E501",   # line too long — handled by formatter, not linter
+    "UP007",  # Use X | Y for union types — keep X | Y only in Python 3.10+
+    "F401",   # unused import — too noisy in __init__.py files
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+python_files = "test_*.py"
+python_functions = "test_*"

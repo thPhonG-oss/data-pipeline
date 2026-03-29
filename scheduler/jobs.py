@@ -78,23 +78,25 @@ def build_scheduler() -> BlockingScheduler:
     """
     Tạo và cấu hình BlockingScheduler với tất cả jobs theo lịch:
 
-    | Job                      | Lịch                          |
-    |--------------------------|-------------------------------|
-    | sync_listing             | Chủ Nhật 01:00                |
-    | sync_financials          | Ngày 1 và 15 hàng tháng 03:00 |
-    | sync_company             | Thứ Hai 02:00                 |
-    | sync_ratios              | Hàng ngày 18:30               |
-    | sync_prices              | Thứ 2–6 lúc 19:00             |
-    | alert_check              | Hàng giờ :00                  |
-    | realtime_subscriber_start| Thứ 2–6 lúc 07:00 (nếu bật)  |
-    | realtime_subscriber_stop | Thứ 2–6 lúc 15:15 (nếu bật)  |
+    | Job                       | Lịch                          |
+    |---------------------------|-------------------------------|
+    | sync_listing              | Chủ Nhật 01:00                |
+    | sync_hsx_company          | Chủ Nhật 01:30                |
+    | sync_company              | Thứ Hai 02:00                 |
+    | sync_financials_c         | Ngày 1 & 15 hàng tháng 04:00  |
+    | sync_ratios               | Hàng ngày 18:30               |
+    | sync_prices               | Thứ 2–6 lúc 19:00             |
+    | alert_check               | Hàng giờ :00                  |
+    | realtime_subscriber_start | Thứ 2–6 lúc 07:00 (nếu bật)  |
+    | realtime_subscriber_stop  | Thứ 2–6 lúc 15:15 (nếu bật)  |
     """
     # Import lazy để tránh circular import và chỉ load khi scheduler thực sự chạy
-    import jobs.sync_listing    as listing_job
-    import jobs.sync_financials as financials_job
-    import jobs.sync_company    as company_job
-    import jobs.sync_ratios     as ratios_job
-    import jobs.sync_prices     as prices_job
+    import jobs.sync_company as company_job
+    import jobs.sync_financials_c as financials_c_job
+    import jobs.sync_hsx_company as hsx_company_job
+    import jobs.sync_listing as listing_job
+    import jobs.sync_prices as prices_job
+    import jobs.sync_ratios as ratios_job
     from utils.alert_checker import check_and_alert
 
     scheduler = BlockingScheduler(timezone="Asia/Ho_Chi_Minh")
@@ -104,14 +106,14 @@ def build_scheduler() -> BlockingScheduler:
         CronTrigger.from_crontab(settings.cron_sync_listing, timezone="Asia/Ho_Chi_Minh"),
         id="sync_listing",
         name="Đồng bộ danh mục mã & ngành ICB",
-        misfire_grace_time=3600,   # Bỏ qua nếu trễ hơn 1 giờ
+        misfire_grace_time=3600,
     )
 
     scheduler.add_job(
-        _safe_run(financials_job.run, "sync_financials"),
-        CronTrigger.from_crontab(settings.cron_sync_financials, timezone="Asia/Ho_Chi_Minh"),
-        id="sync_financials",
-        name="Đồng bộ báo cáo tài chính",
+        _safe_run(hsx_company_job.run, "sync_hsx_company"),
+        CronTrigger.from_crontab(settings.cron_sync_hsx_company, timezone="Asia/Ho_Chi_Minh"),
+        id="sync_hsx_company",
+        name="Enrich thông tin công ty HOSE từ HSX API",
         misfire_grace_time=3600,
     )
 
@@ -124,11 +126,19 @@ def build_scheduler() -> BlockingScheduler:
     )
 
     scheduler.add_job(
+        _safe_run(financials_c_job.run, "sync_financials_c"),
+        CronTrigger.from_crontab(settings.cron_sync_financials_c, timezone="Asia/Ho_Chi_Minh"),
+        id="sync_financials_c",
+        name="Đồng bộ BCTC + ratio (Approach C — 4 bảng riêng)",
+        misfire_grace_time=3600,
+    )
+
+    scheduler.add_job(
         _safe_run(ratios_job.run, "sync_ratios"),
         CronTrigger.from_crontab(settings.cron_sync_ratios, timezone="Asia/Ho_Chi_Minh"),
         id="sync_ratios",
         name="Đồng bộ ratio_summary (sau đóng cửa)",
-        misfire_grace_time=1800,   # Bỏ qua nếu trễ hơn 30 phút
+        misfire_grace_time=1800,
     )
 
     scheduler.add_job(
@@ -144,7 +154,7 @@ def build_scheduler() -> BlockingScheduler:
         CronTrigger.from_crontab(settings.cron_alert_check, timezone="Asia/Ho_Chi_Minh"),
         id="alert_check",
         name="Kiểm tra pipeline_logs, gửi alert Telegram nếu có sự cố",
-        misfire_grace_time=300,    # Bỏ qua nếu trễ hơn 5 phút
+        misfire_grace_time=300,
     )
 
     # ── Realtime pipeline (subscriber start/stop + processor always-on) ───────

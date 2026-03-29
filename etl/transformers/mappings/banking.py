@@ -65,6 +65,7 @@ CASH_FLOW_MAP: dict[str, str] = {
     # ── Hoạt động kinh doanh ─────────────────────────────────────
     "Lưu chuyển tiền thuần từ các hoạt động sản xuất kinh doanh": "cfo",
     # ── Hoạt động đầu tư ─────────────────────────────────────────
+    "Mua sắm TSCĐ"                                     : "capex",                      # Âm → abs()
     "Lưu chuyển tiền thuần từ hoạt động đầu tư"       : "cfi",
     # ── Hoạt động tài chính ──────────────────────────────────────
     "Cổ tức trả cho cổ đông, lợi nhuận đã chia"       : "dividends_paid",             # Âm → abs()

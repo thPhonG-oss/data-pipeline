@@ -13,9 +13,11 @@ def _parse_args() -> argparse.Namespace:
         epilog="""
 Ví dụ:
   python main.py sync_listing
-  python main.py sync_financials --symbol HPG VCB FPT
   python main.py sync_company --symbol HPG VCB --workers 3
   python main.py sync_company --symbol HPG --data-types news --no-overview
+  python main.py sync_hsx_company
+  python main.py sync_financials_c --symbol HPG VCB FPT
+  python main.py sync_financials_c --symbol HPG --report-type ratio
   python main.py sync_ratios
   python main.py sync_prices --symbol HPG VCB FPT
   python main.py sync_prices --full-history
@@ -31,34 +33,19 @@ Ví dụ:
         help="Đồng bộ danh mục mã chứng khoán và phân ngành ICB",
     )
 
-    # ── sync_financials ───────────────────────────────────────────────────────
-    p_fin = subparsers.add_parser(
-        "sync_financials",
-        help="Đồng bộ báo cáo tài chính (balance sheet, income statement, cash flow, ratio)",
-    )
-    p_fin.add_argument(
-        "--symbol", nargs="+", metavar="SYM",
-        help="Mã cần sync (ví dụ: HPG VCB). Mặc định: tất cả mã đang niêm yết.",
-    )
-    p_fin.add_argument(
-        "--report-type", nargs="+", metavar="TYPE",
-        choices=["balance_sheet", "income_statement", "cash_flow"],
-        help="Loại báo cáo cần sync. Mặc định: cả 3 loại.",
-    )
-    p_fin.add_argument(
-        "--workers", type=int, metavar="N",
-        help="Số luồng song song. Mặc định: settings.max_workers.",
-    )
-
     # ── sync_company ──────────────────────────────────────────────────────────
     p_co = subparsers.add_parser(
         "sync_company",
         help="Đồng bộ thông tin doanh nghiệp (cổ đông, lãnh đạo, công ty con, sự kiện, tin tức)",
     )
-    p_co.add_argument("--symbol", nargs="+", metavar="SYM",
-                      help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.")
-    p_co.add_argument("--workers", type=int, metavar="N",
-                      help="Số luồng song song. Mặc định: settings.max_workers.")
+    p_co.add_argument(
+        "--symbol", nargs="+", metavar="SYM",
+        help="Mã cần sync. Mặc định: tất cả STOCK đang niêm yết.",
+    )
+    p_co.add_argument(
+        "--workers", type=int, metavar="N",
+        help="Số luồng song song. Mặc định: settings.max_workers.",
+    )
     p_co.add_argument(
         "--data-types", nargs="+", metavar="TYPE",
         choices=["shareholders", "officers", "subsidiaries", "events", "news"],
@@ -69,13 +56,44 @@ Ví dụ:
         help="Bỏ qua bước UPDATE icb_code/charter_capital/history vào companies.",
     )
 
+    # ── sync_hsx_company ─────────────────────────────────────────────────────
+    subparsers.add_parser(
+        "sync_hsx_company",
+        help="Enrich thông tin công ty HOSE từ HSX API (brief, phone, fax, address, web_url)",
+    )
+
+    # ── sync_financials_c ─────────────────────────────────────────────────────
+    p_fin_c = subparsers.add_parser(
+        "sync_financials_c",
+        help="Đồng bộ BCTC + ratio vào 4 bảng Approach C (fin_balance_sheet, ...)",
+    )
+    p_fin_c.add_argument(
+        "--symbol", nargs="+", metavar="SYM",
+        help="Mã cần sync. Mặc định: tất cả mã đang niêm yết.",
+    )
+    p_fin_c.add_argument(
+        "--report-type", nargs="+", metavar="TYPE",
+        choices=["balance_sheet", "income_statement", "cash_flow", "ratio"],
+        help="Loại báo cáo cần sync. Mặc định: tất cả 4 loại.",
+    )
+    p_fin_c.add_argument(
+        "--workers", type=int, metavar="N",
+        help="Số luồng song song. Mặc định: settings.max_workers.",
+    )
+
     # ── sync_ratios ───────────────────────────────────────────────────────────
     p_rat = subparsers.add_parser(
         "sync_ratios",
         help="Đồng bộ ratio_summary — snapshot tài chính mới nhất (chạy sau đóng cửa)",
     )
-    p_rat.add_argument("--symbol", nargs="+", metavar="SYM")
-    p_rat.add_argument("--workers", type=int, metavar="N")
+    p_rat.add_argument(
+        "--symbol", nargs="+", metavar="SYM",
+        help="Mã cần sync. Mặc định: tất cả mã đang niêm yết.",
+    )
+    p_rat.add_argument(
+        "--workers", type=int, metavar="N",
+        help="Số luồng song song. Mặc định: settings.max_workers.",
+    )
 
     # ── sync_prices ───────────────────────────────────────────────────────────
     p_prices = subparsers.add_parser(
@@ -112,12 +130,6 @@ def main() -> None:
         result = run()
         logger.info(f"Kết quả: {result}")
 
-    elif args.command == "sync_financials":
-        from jobs.sync_financials import run
-        symbols = [s.upper() for s in args.symbol] if args.symbol else None
-        result = run(symbols=symbols, report_types=args.report_type, max_workers=args.workers)
-        logger.info(f"Kết quả: {result}")
-
     elif args.command == "sync_company":
         from jobs.sync_company import run
         symbols = [s.upper() for s in args.symbol] if args.symbol else None
@@ -127,6 +139,17 @@ def main() -> None:
             data_types=args.data_types,
             sync_overview=not args.no_overview,
         )
+        logger.info(f"Kết quả: {result}")
+
+    elif args.command == "sync_hsx_company":
+        from jobs.sync_hsx_company import run
+        result = run()
+        logger.info(f"Kết quả: {result}")
+
+    elif args.command == "sync_financials_c":
+        from jobs.sync_financials_c import run
+        symbols = [s.upper() for s in args.symbol] if args.symbol else None
+        result = run(symbols=symbols, report_types=args.report_type, max_workers=args.workers)
         logger.info(f"Kết quả: {result}")
 
     elif args.command == "sync_ratios":
@@ -151,7 +174,7 @@ def main() -> None:
         logger.info("Scheduler đang chạy. Nhấn Ctrl+C để dừng.")
         logger.info("Lịch chạy:")
         for job in scheduler.get_jobs():
-            next_run = getattr(job, 'next_run_time', None) or '(chưa xác định)'
+            next_run = getattr(job, "next_run_time", None) or "(chưa xác định)"
             logger.info(f"  - {job.id}: {next_run}")
         try:
             scheduler.start()

@@ -23,7 +23,6 @@ import pandas as pd
 
 from utils.logger import logger
 
-
 # Tập cột chi phí cần lấy giá trị tuyệt đối
 # (API trả về âm, DB lưu dương để dễ tính toán và screener)
 _ABS_FIELDS: frozenset[str] = frozenset({
@@ -69,17 +68,23 @@ class BaseFinancialParser(ABC):
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def parse(self, df: pd.DataFrame, symbol: str) -> list[dict[str, Any]]:
+    def parse(
+        self,
+        df: pd.DataFrame,
+        symbol: str,
+        icb_code: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Parse tất cả kỳ có trong df, trả về list payload dict.
 
         Args:
-            df:     DataFrame thô từ Finance extractor (index = kỳ báo cáo).
-                    Tên cột là tiếng Việt đầy đủ dấu.
-            symbol: Mã cổ phiếu (đã chuẩn hóa uppercase).
+            df:       DataFrame thô từ Finance extractor (index = kỳ báo cáo).
+                      Tên cột là tiếng Việt đầy đủ dấu.
+            symbol:   Mã cổ phiếu (đã chuẩn hóa uppercase).
+            icb_code: Mã ICB của công ty — lưu vào payload để tránh JOIN khi query.
 
         Returns:
-            List dict, mỗi dict là một kỳ báo cáo sẵn sàng load vào financial_reports.
+            List dict, mỗi dict là một kỳ báo cáo sẵn sàng load vào Approach C tables.
         """
         mapping     = self.FIELD_MAPS.get(self.statement_type, {})
         null_fields = self.NULL_FIELDS.get(self.statement_type, set())
@@ -97,6 +102,7 @@ class BaseFinancialParser(ABC):
                 "statement_type": self.statement_type,
                 "template":       self._template_name(),
                 "source":         "vci",
+                "icb_code":       icb_code,
             }
             payload.update(core)
             payload["raw_details"] = raw_details
@@ -120,9 +126,9 @@ class BaseFinancialParser(ABC):
         Resolve từng trường canonical từ row dùng mapping dict.
 
         Thứ tự ưu tiên:
-            1. Trong null_fields                → None (không áp dụng cho template)
-            2. Cột nguồn có trong row.index     → giá trị số (abs() nếu cần)
-            3. Cột nguồn không có trong row     → 0.0   (áp dụng nhưng không báo cáo)
+            1. Trong null_fields                → None (không áp dụng cho template này)
+            2. Cột nguồn có trong row.index     → giá trị số (abs() nếu cần), hoặc None nếu NaN
+            3. Cột nguồn không có trong row     → None (cột không tồn tại trong báo cáo này)
         """
         # reverse: canonical → tên cột tiếng Việt
         reverse: dict[str, str] = {}
@@ -142,9 +148,9 @@ class BaseFinancialParser(ABC):
                 val = self._to_numeric(row[vi_name])
                 if val is not None and canonical in _ABS_FIELDS:
                     val = abs(val)
-                result[canonical] = val if val is not None else 0.0
+                result[canonical] = val  # None khi NaN/không hợp lệ — không ghi đè bằng 0.0
             else:
-                result[canonical] = 0.0
+                result[canonical] = None  # Cột không có trong báo cáo → NULL, không phải 0
 
         return result
 
@@ -228,8 +234,8 @@ class NonFinancialParser(BaseFinancialParser):
     # Import lười (lazy) để tránh vòng lặp import khi package khởi động
     from etl.transformers.mappings.non_financial import (
         BALANCE_SHEET_MAP,
-        INCOME_STATEMENT_MAP,
         CASH_FLOW_MAP,
+        INCOME_STATEMENT_MAP,
     )
 
     FIELD_MAPS = {
@@ -254,8 +260,8 @@ class BankingParser(BaseFinancialParser):
 
     from etl.transformers.mappings.banking import (
         BALANCE_SHEET_MAP,
-        INCOME_STATEMENT_MAP,
         CASH_FLOW_MAP,
+        INCOME_STATEMENT_MAP,
     )
 
     FIELD_MAPS = {
@@ -291,8 +297,8 @@ class SecuritiesParser(BaseFinancialParser):
 
     from etl.transformers.mappings.securities import (
         BALANCE_SHEET_MAP,
-        INCOME_STATEMENT_MAP,
         CASH_FLOW_MAP,
+        INCOME_STATEMENT_MAP,
     )
 
     FIELD_MAPS = {
@@ -324,8 +330,8 @@ class InsuranceParser(BaseFinancialParser):
 
     from etl.transformers.mappings.insurance import (
         BALANCE_SHEET_MAP,
-        INCOME_STATEMENT_MAP,
         CASH_FLOW_MAP,
+        INCOME_STATEMENT_MAP,
     )
 
     FIELD_MAPS = {

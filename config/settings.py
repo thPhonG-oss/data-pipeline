@@ -31,15 +31,16 @@ class Settings(BaseSettings):
     log_dir: str = "logs"
 
     # ── Scheduler (cron expressions — chuẩn Unix 5-field) ────
-    cron_sync_listing:    str = "0 1 * * 0"       # Chủ Nhật 01:00
-    cron_sync_financials: str = "0 3 1,15 * *"    # Ngày 1 & 15 hàng tháng 03:00
-    cron_sync_company:    str = "0 2 * * 1"        # Thứ Hai 02:00
-    cron_sync_ratios:     str = "30 18 * * *"      # Hàng ngày 18:30
-    cron_sync_prices:          str = "0 19 * * 1-5"   # Thứ 2–6 lúc 19:00 (sau đóng cửa)
-    cron_alert_check:          str = "0 * * * *"      # Hàng giờ :00
-    cron_realtime_start:       str = "0 7 * * 1-5"    # Thứ 2–6 lúc 07:00 (trước ATO)
-    cron_realtime_stop:        str = "15 15 * * 1-5"  # Thứ 2–6 lúc 15:15 (sau ATC)
-    realtime_enabled:          bool = True             # Tắt/bật realtime pipeline
+    cron_sync_listing:      str = "0 1 * * 0"        # Chủ Nhật 01:00
+    cron_sync_hsx_company:  str = "30 1 * * 0"       # Chủ Nhật 01:30 (sau sync_listing)
+    cron_sync_company:      str = "0 2 * * 1"         # Thứ Hai 02:00
+    cron_sync_financials_c: str = "0 4 1,15 * *"     # Ngày 1 & 15 hàng tháng 04:00
+    cron_sync_ratios:       str = "30 18 * * *"       # Hàng ngày 18:30
+    cron_sync_prices:       str = "0 19 * * 1-5"      # Thứ 2–6 lúc 19:00 (sau đóng cửa)
+    cron_alert_check:       str = "0 * * * *"         # Hàng giờ :00
+    cron_realtime_start:    str = "0 7 * * 1-5"       # Thứ 2–6 lúc 07:00 (trước ATO)
+    cron_realtime_stop:     str = "15 15 * * 1-5"     # Thứ 2–6 lúc 15:15 (sau ATC)
+    realtime_enabled:       bool = True               # Tắt/bật realtime pipeline
 
     # ── DNSE ──────────────────────────────────────────────────
     dnse_username: str = ""   # Email hoặc SĐT đăng ký tài khoản DNSE

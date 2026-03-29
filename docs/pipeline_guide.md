@@ -3,7 +3,7 @@
 > Tài liệu này dành cho thành viên team muốn đọc hiểu, tùy chỉnh, hoặc tối ưu pipeline.
 > Không yêu cầu kiến thức trước — chỉ cần biết Python cơ bản và SQL.
 
-> Cập nhật: 2026-03-28 (refactored migrations 001–007, realtime scheduler integration, financial_reports unified table)
+> Cập nhật: 2026-03-28 (migration 008 Approach C — 4 bảng BCTC riêng, RatioParser, ICB routing fix 87xx)
 
 ---
 
@@ -71,12 +71,13 @@ DNSE MDDS (MQTT v5/WSS)
    PostgreSQL → price_intraday
 ```
 
-**6 batch jobs chính:**
+**7 batch jobs chính:**
 
 | Module | Job | Dữ liệu | Lịch chạy |
 |---|---|---|---|
 | Listing | `sync_listing` | Danh mục mã, phân ngành ICB | Chủ Nhật 01:00 |
-| Finance | `sync_financials` | Báo cáo tài chính (4 loại) + cross-validation | Ngày 1 & 15 hàng tháng 03:00 |
+| Finance A | `sync_financials` | BCTC → `financial_reports` (Approach A — legacy) | Ngày 1 & 15 hàng tháng 03:00 |
+| Finance C | `sync_financials_c` | BCTC + ratio → 4 bảng Approach C | Ngày 1 & 15 hàng tháng 04:00 |
 | Company | `sync_company` | Cổ đông, lãnh đạo, công ty con, sự kiện | Thứ Hai 02:00 |
 | Trading | `sync_ratios` | Snapshot tài chính mới nhất | Hàng ngày 18:30 |
 | Price History | `sync_prices` | OHLCV lịch sử EOD (KBS primary + VNDirect fallback) | Thứ 2–6 lúc 19:00 |
@@ -101,9 +102,10 @@ data-pipeline/
 │       ├── 002_reference_tables.sql   ← icb_industries (+ definition), companies (+ history, company_profile)
 │       ├── 003_company_tables.sql     ← shareholders, officers, subsidiaries, corporate_events, ratio_summary
 │       ├── 004_operational_tables.sql ← pipeline_logs, data_quality_flags, company_news
-│       ├── 005_financial_reports.sql  ← financial_reports (bảng hợp nhất 3 loại BCTC × 4 ngành)
+│       ├── 005_financial_reports.sql  ← financial_reports (bảng hợp nhất 3 loại BCTC × 4 ngành — Approach A)
 │       ├── 006_price_tables.sql       ← price_history (EOD), price_intraday (1m/5m)
-│       └── 007_timescaledb.sql        ← Hypertables, retention/compression, cagg_ohlc_5m/1h/1d
+│       ├── 007_timescaledb.sql        ← Hypertables, retention/compression, cagg_ohlc_5m/1h/1d
+│       └── 008_approach_c_schema.sql  ← fin_balance_sheet, fin_income_statement, fin_cash_flow, fin_financial_ratios
 │
 ├── etl/
 │   ├── base/
@@ -120,8 +122,12 @@ data-pipeline/
 │   ├── transformers/
 │   │   ├── listing.py       ← ListingTransformer
 │   │   ├── finance_factory.py ← FinanceParserFactory (4 templates: non_financial/banking/securities/insurance)
-│   │   ├── finance_parsers.py ← Parser implementations
+│   │   ├── finance_parsers.py ← Parser implementations (bug fix: 0.0→None cho cột thiếu)
 │   │   ├── mappings/        ← Field mappings per industry template
+│   │   ├── approach_c/      ← Approach C parsers
+│   │   │   ├── __init__.py  ← Export RatioParser, ApproachCFactory
+│   │   │   ├── ratio_parser.py ← RatioParser (54 cols, decimal ROE, banking-only NIM/CAR/LDR)
+│   │   │   └── factory.py   ← ApproachCFactory → (payloads, table_name)
 │   │   ├── company.py       ← CompanyTransformer
 │   │   ├── trading.py       ← TradingTransformer
 │   │   ├── dnse_price.py    ← KBSPriceTransformer (KBS → price_history, ×1000 VND scale)
@@ -130,11 +136,13 @@ data-pipeline/
 │   │   └── cross_source.py  ← FinanceCrossValidator (VCI vs KBS, ngưỡng 2%)
 │   └── loaders/
 │       ├── helpers.py       ← sanitize_for_postgres, df_to_records, v.v.
-│       └── postgres.py      ← PostgresLoader (upsert engine)
+│       ├── postgres.py      ← PostgresLoader (upsert engine)
+│       └── approach_c_loader.py ← ApproachCLoader (wrapper → PostgresLoader cho 4 bảng Approach C)
 │
 ├── jobs/
 │   ├── sync_listing.py      ← Listing module end-to-end
-│   ├── sync_financials.py   ← Finance module + cross-validation
+│   ├── sync_financials.py   ← Finance module + cross-validation → financial_reports (Approach A)
+│   ├── sync_financials_c.py ← BCTC + ratio → 4 bảng Approach C (fin_balance_sheet, ...)
 │   ├── sync_company.py      ← Company module end-to-end
 │   ├── sync_ratios.py       ← Trading module end-to-end
 │   ├── sync_prices.py       ← Price history: KBS primary + VNDirect fallback
@@ -167,7 +175,7 @@ data-pipeline/
 │   └── db/
 │       └── test_timescale_migrations.py ← 21 tests kiểm tra SQL migrations 009–011
 │
-├── main.py                  ← CLI entry point (6 subcommands)
+├── main.py                  ← CLI entry point (7 subcommands)
 ├── check_realtime.py        ← Smoke test: kiểm tra Redis streams + price_intraday
 ├── db/check_timescale.py    ← Health-check TimescaleDB sau migration (hypertables, CAggs, policies)
 ├── Dockerfile               ← Build image pipeline
@@ -295,12 +303,13 @@ settings.log_level         # DEBUG | INFO | WARNING | ERROR (default: INFO)
 settings.log_dir           # Thư mục lưu file log (default: logs)
 
 # Cron (Unix 5-field, Asia/Ho_Chi_Minh)
-settings.cron_sync_listing     # default: "0 1 * * 0"     (CN 01:00)
-settings.cron_sync_financials  # default: "0 3 1,15 * *"  (Ngày 1&15 03:00)
-settings.cron_sync_company     # default: "0 2 * * 1"     (T2 02:00)
-settings.cron_sync_ratios      # default: "30 18 * * *"   (Hàng ngày 18:30)
-settings.cron_sync_prices      # default: "0 19 * * 1-5"  (T2–6 19:00)
-settings.cron_alert_check      # default: "0 * * * *"     (Hàng giờ)
+settings.cron_sync_listing       # default: "0 1 * * 0"     (CN 01:00)
+settings.cron_sync_financials    # default: "0 3 1,15 * *"  (Ngày 1&15 03:00 — Approach A)
+settings.cron_sync_financials_c  # default: "0 4 1,15 * *"  (Ngày 1&15 04:00 — Approach C, sau A)
+settings.cron_sync_company       # default: "0 2 * * 1"     (T2 02:00)
+settings.cron_sync_ratios        # default: "30 18 * * *"   (Hàng ngày 18:30)
+settings.cron_sync_prices        # default: "0 19 * * 1-5"  (T2–6 19:00)
+settings.cron_alert_check        # default: "0 * * * *"     (Hàng giờ)
 
 # DNSE (dùng cho sync_prices và real-time)
 settings.dnse_username     # Email/SĐT tài khoản DNSE (Entrade)
@@ -334,25 +343,32 @@ CRON_SYNC_PRICES=30 18 * * 1-5
 
 ```python
 # Tên job (dùng trong pipeline_logs)
-JOB_SYNC_LISTING    = "sync_listing"
-JOB_SYNC_FINANCIALS = "sync_financials"
-JOB_SYNC_COMPANY    = "sync_company"
-JOB_SYNC_RATIOS     = "sync_ratios"
-JOB_SYNC_PRICES     = "sync_prices"
+JOB_SYNC_LISTING      = "sync_listing"
+JOB_SYNC_FINANCIALS   = "sync_financials"
+JOB_SYNC_FINANCIALS_C = "sync_financials_c"   # Approach C
+JOB_SYNC_COMPANY      = "sync_company"
+JOB_SYNC_RATIOS       = "sync_ratios"
+JOB_SYNC_PRICES       = "sync_prices"
 
 # Conflict keys: cột nào dùng làm key cho ON CONFLICT
 CONFLICT_KEYS = {
-    "icb_industries":    ["icb_code"],
-    "companies":         ["symbol"],
-    "financial_reports": ["symbol", "period", "period_type", "statement_type"],
-    "ratio_summary":     ["symbol", "year_report", "quarter_report"],
-    "shareholders":      ["symbol", "share_holder", "snapshot_date"],
-    "officers":          ["symbol", "officer_name", "status", "snapshot_date"],
-    "subsidiaries":      ["symbol", "organ_name", "snapshot_date"],
-    "corporate_events":  ["symbol", "event_list_code", "record_date"],
-    "company_news":      ["vci_id", "symbol"],
-    "price_history":     ["symbol", "date", "source"],
-    "price_intraday":    ["symbol", "time", "resolution"],
+    "icb_industries":      ["icb_code"],
+    "companies":           ["symbol"],
+    # Approach A (legacy)
+    "financial_reports":   ["symbol", "period", "period_type", "statement_type"],
+    # Approach C (mới — 4 bảng riêng)
+    "fin_balance_sheet":   ["symbol", "period", "period_type"],
+    "fin_income_statement":["symbol", "period", "period_type"],
+    "fin_cash_flow":       ["symbol", "period", "period_type"],
+    "fin_financial_ratios":["symbol", "period", "period_type"],
+    "ratio_summary":       ["symbol", "year_report", "quarter_report"],
+    "shareholders":        ["symbol", "share_holder", "snapshot_date"],
+    "officers":            ["symbol", "officer_name", "status", "snapshot_date"],
+    "subsidiaries":        ["symbol", "organ_name", "snapshot_date"],
+    "corporate_events":    ["symbol", "event_list_code", "record_date"],
+    "company_news":        ["vci_id", "symbol"],
+    "price_history":       ["symbol", "date", "source"],
+    "price_intraday":      ["symbol", "time", "resolution"],
 }
 
 # Cột do server tự sinh — KHÔNG đưa vào INSERT/UPDATE
@@ -372,8 +388,15 @@ icb_industries (icb_code PK, icb_name, level, parent_code, definition)
             │
             ├── financial_reports   (symbol FK, period, period_type, statement_type,
             │                        template, 80+ numeric columns, raw_details JSONB)
-            │                        ← Bảng hợp nhất balance_sheet / income_statement / cash_flow
-            │                           × 4 mẫu biểu: non_financial / banking / securities / insurance
+            │                        ← Approach A (legacy): bảng hợp nhất balance_sheet /
+            │                           income_statement / cash_flow × 4 ngành
+            │
+            ├── fin_balance_sheet   (symbol FK, period, period_type, template, 50+ cols)
+            ├── fin_income_statement(symbol FK, period, period_type, template, 40+ cols)
+            ├── fin_cash_flow       (symbol FK, period, period_type, template, 24+ cols)
+            ├── fin_financial_ratios(symbol FK, period, period_type, roe, pe_ratio, nim,
+            │                        car, ldr, casa, ... 48 cols ratio lịch sử)
+            │                        ← Approach C (mới): 4 bảng riêng, UNIQUE (symbol, period, period_type)
             │
             ├── shareholders        (symbol FK, snapshot_date, share_holder, ...)
             ├── officers            (symbol FK, snapshot_date, officer_name, ...)
@@ -398,16 +421,28 @@ data_quality_flags  (symbol, table_name, period, column_name, diff_pct, flagged_
 | `icb_industries` | 4 cấp phân ngành ICB. Cột `definition TEXT` chứa mô tả chi tiết (chỉ có ở level 4, nguồn ICB FTSE Russell) | ~249 ngành |
 | `companies` | Tất cả mã chứng khoán đang niêm yết. Cột `history TEXT` chứa lịch sử hình thành, `company_profile TEXT` chứa giới thiệu tổng quan — lấy từ `company.overview()` | ~1,550 mã |
 
-**Báo cáo tài chính** (UNIQUE trên `(symbol, period, period_type, statement_type)`):
+**Báo cáo tài chính — Approach A (legacy)** (UNIQUE trên `(symbol, period, period_type, statement_type)`):
 
 | Bảng | Mô tả | Cột đặc biệt |
 |---|---|---|
 | `financial_reports` | **Bảng hợp nhất** chứa balance_sheet + income_statement + cash_flow cho 4 loại ngành | `statement_type ENUM`, `template ENUM`, `raw_details JSONB` |
 
-Phân biệt loại báo cáo qua cột `statement_type`: `balance_sheet` / `income_statement` / `cash_flow`.
-Phân biệt ngành qua cột `template`: `non_financial` / `banking` / `securities` / `insurance`.
+**Báo cáo tài chính — Approach C (mới)** (UNIQUE trên `(symbol, period, period_type)` mỗi bảng):
+
+| Bảng | Mô tả | Số cột | Template hỗ trợ |
+|---|---|---|---|
+| `fin_balance_sheet` | Bảng cân đối kế toán | ~53 | non_financial, banking, securities, insurance |
+| `fin_income_statement` | Kết quả kinh doanh | ~43 | non_financial, banking, securities, insurance |
+| `fin_cash_flow` | Lưu chuyển tiền tệ | ~26 | non_financial, banking, securities, insurance |
+| `fin_financial_ratios` | Chỉ số tài chính lịch sử (ROE, P/E, NIM, CAR, LDR…) | ~50 | tất cả |
+
+Ưu điểm Approach C:
+- Schema rõ ràng hơn, query nhanh hơn (không quét cột NULL thừa)
+- `fin_financial_ratios` lưu ratio lịch sử — Approach A không có
+- Cột thiếu = NULL thực sự (không bị điền 0.0 giả)
 
 > `period` có dạng `"2024"` (năm) hoặc `"2024Q1"` (quý 1 năm 2024).
+> Phân biệt ngành qua cột `template`: `non_financial` / `banking` / `securities` / `insurance`.
 
 **Company intelligence:**
 
@@ -444,7 +479,7 @@ Bảng `financial_reports` có cột `raw_details` lưu **toàn bộ dữ liệu
 ### 5.4 Chạy migration
 
 ```bash
-# Lần đầu tiên (tạo toàn bộ schema, 001→007)
+# Lần đầu tiên (tạo toàn bộ schema, 001→008)
 python -m db.migrate
 
 # Docker tự chạy khi init lần đầu (mount: ./db/migrations:/docker-entrypoint-initdb.d)
@@ -653,7 +688,38 @@ result = run(
 
 Mỗi `(symbol, report_type)` = 1 task trong ThreadPoolExecutor. Sau khi cả 3 loại BCTC của 1 symbol thành công → tự động gọi `FinanceCrossValidator`.
 
-### 7.3 `sync_company.py`
+### 7.3 `sync_financials_c.py` (Approach C)
+
+```python
+result = run(
+    symbols=["HPG", "VCB"],   # None = tất cả mã
+    max_workers=5,
+    report_types=["balance_sheet", "income_statement", "cash_flow", "ratio"],  # None = cả 4
+)
+# result = {"success": 8, "failed": 0, "skipped": 0, "rows": 1589}
+```
+
+Ghi dữ liệu vào **4 bảng Approach C** thay vì `financial_reports`. Sử dụng `ApproachCFactory` để:
+- `"balance_sheet"` → `FinanceParserFactory` → `fin_balance_sheet`
+- `"income_statement"` → `FinanceParserFactory` → `fin_income_statement`
+- `"cash_flow"` → `FinanceParserFactory` → `fin_cash_flow`
+- `"ratio"` → `RatioParser` → `fin_financial_ratios`
+
+**ICB routing:** `FinanceParserFactory._resolve_parser()` xác định ngành từ `icb_code`. Hỗ trợ:
+- FTSE 8 chữ số: `3010xxxx` → Banking, `3030xxxx` → Insurance, `3020xxxx` → Securities
+- Legacy 4 chữ số: `83xx` → Banking, `84xx`/`8536` → Insurance, `85xx`/`87xx` → Securities
+
+> **Bug fix (2026-03-28):** Mã ICB `87xx` (vd: `8777` = Môi giới CK) trước đây không được nhận dạng, gây ra việc SSI và các CTCK dùng `NonFinancialParser` sai. Đã sửa bằng cách thêm `prefix2 == "87"` → SecuritiesParser.
+
+```bash
+# Pilot test 5 mã
+python main.py sync_financials_c --symbol HPG VCB SSI BVH VNM
+
+# Full sync tất cả mã, chỉ ratio
+python main.py sync_financials_c --report-type ratio
+```
+
+### 7.4 `sync_company.py`
 
 ```python
 result = run(symbols=None, max_workers=5)
@@ -679,7 +745,7 @@ python main.py sync_company --symbols HPG VCB --data-types news --no-overview
 python main.py sync_company
 ```
 
-### 7.4 `sync_ratios.py`
+### 7.5 `sync_ratios.py`
 
 ```python
 result = run(symbols=None, max_workers=5)
@@ -690,7 +756,7 @@ Job đơn giản nhất: 1 extractor → 1 transformer → 1 loader. Chạy hàn
 
 > **Thực tế (2026-03-24):** 1,526 symbols có ratio_summary, ~22 mã bị skip (API không trả data — bình thường với mã ít thanh khoản).
 
-### 7.5 `sync_prices.py`
+### 7.6 `sync_prices.py`
 
 ```python
 result = run(
@@ -731,12 +797,13 @@ scheduler = build_scheduler()
 scheduler.start()  # Blocking
 ```
 
-**8 jobs đã đăng ký (Asia/Ho_Chi_Minh):**
+**9 jobs đã đăng ký (Asia/Ho_Chi_Minh):**
 
 | Job ID | Cron | Lịch | misfire_grace_time |
 |---|---|---|---|
 | `sync_listing` | `0 1 * * 0` | CN 01:00 | 1 giờ |
-| `sync_financials` | `0 3 1,15 * *` | Ngày 1&15 03:00 | 1 giờ |
+| `sync_financials` | `0 3 1,15 * *` | Ngày 1&15 03:00 (Approach A) | 1 giờ |
+| `sync_financials_c` | `0 4 1,15 * *` | Ngày 1&15 04:00 (Approach C) | 1 giờ |
 | `sync_company` | `0 2 * * 1` | T2 02:00 | 1 giờ |
 | `sync_ratios` | `30 18 * * *` | Hàng ngày 18:30 | 30 phút |
 | `sync_prices` | `0 19 * * 1-5` | T2–6 19:00 | 1 giờ |
@@ -1004,6 +1071,11 @@ python main.py sync_listing
 python main.py sync_financials
 python main.py sync_financials --symbol HPG VCB FPT
 python main.py sync_financials --symbol HPG --workers 3
+
+# Approach C — 4 bảng riêng + ratio
+python main.py sync_financials_c --symbol HPG VCB SSI BVH VNM   # pilot test
+python main.py sync_financials_c --report-type ratio             # chỉ sync ratio
+python main.py sync_financials_c                                 # full sync tất cả mã
 python main.py sync_company
 python main.py sync_ratios --symbol HPG VCB
 
@@ -1031,7 +1103,7 @@ python -m realtime.subscriber   # Terminal 2 — chỉ active T2–6 nếu dùng
 ```
 docker-compose.yml
 ├── postgres  (timescale/timescaledb:latest-pg16)
-│   ├── Tự chạy db/migrations/ khi init lần đầu (001→012)
+│   ├── Tự chạy db/migrations/ khi init lần đầu (001→008)
 │   ├── Dữ liệu trong volume postgres_data
 │   └── Expose port 5432
 │

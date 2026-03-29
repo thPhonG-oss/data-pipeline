@@ -2,10 +2,10 @@
 Cross-source validator: So sánh BCTC VCI (trong DB) với KBS (fetch qua vnstock).
 Ghi flag vào data_quality_flags khi chênh lệch > DIFF_THRESHOLD.
 
-Nguồn dữ liệu DB: bảng financial_reports (thay thế balance_sheets/income_statements/cash_flows).
+Nguồn dữ liệu DB: 4 bảng Approach C (fin_balance_sheet, fin_income_statement, fin_cash_flow).
 
 Đơn vị:
-  VCI lưu trong financial_reports: VND nguyên (NUMERIC(20,2))
+  VCI lưu trong Approach C tables: VND nguyên (NUMERIC(20,2))
   KBS qua vnstock Finance:         nghìn VND → nhân ×1000 trước khi so sánh
 
 Cách so sánh:
@@ -39,6 +39,13 @@ _INCOME_STMT_MAP = {
 
 _CASHFLOW_MAP = {
     "cfo": "net_cash_flows_from_operating_activities",
+}
+
+# Approach C: mapping statement_type → tên bảng DB
+_TABLE_MAP = {
+    "balance_sheet":    "fin_balance_sheet",
+    "income_statement": "fin_income_statement",
+    "cash_flow":        "fin_cash_flow",
 }
 
 # (statement_type, mapping cột DB→KBS item_id, method Finance KBS)
@@ -88,19 +95,19 @@ class FinanceCrossValidator:
         return self._compare_and_flag(symbol, stmt_type, df_vci, df_kbs, col_map)
 
     def _fetch_vci(self, symbol: str, stmt_type: str) -> pd.DataFrame | None:
-        """Đọc 3 năm gần nhất từ financial_reports (period_type='year', source='vci')."""
+        """Đọc 3 năm gần nhất từ bảng Approach C tương ứng (period_type='year', source='vci')."""
+        table = _TABLE_MAP[stmt_type]
         with engine.connect() as conn:
             rows = conn.execute(
-                text("""
-                    SELECT * FROM financial_reports
-                    WHERE symbol         = :sym
-                      AND statement_type = :stmt
-                      AND period_type    = 'year'
-                      AND source         = 'vci'
+                text(f"""
+                    SELECT * FROM {table}
+                    WHERE symbol      = :sym
+                      AND period_type = 'year'
+                      AND source      = 'vci'
                     ORDER BY period DESC
                     LIMIT 3
                 """),
-                {"sym": symbol, "stmt": stmt_type},
+                {"sym": symbol},
             ).fetchall()
         if not rows:
             return None
@@ -166,7 +173,7 @@ class FinanceCrossValidator:
                 if diff_pct > _DIFF_THRESHOLD:
                     flags.append({
                         "symbol":      symbol,
-                        "table_name":  "financial_reports",
+                        "table_name":  _TABLE_MAP[stmt_type],
                         "period":      period,
                         "column_name": db_col,
                         "source_a":    "vci",
